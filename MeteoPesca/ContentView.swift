@@ -289,66 +289,7 @@ struct ContentView: View {
                             .background(Color.white.opacity(0.04))
                             .cornerRadius(16)
                             .padding(.horizontal)
-                            
-                            // 6. Hourly intervals timeline
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Timeline Attività Oraria")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                ForEach(forecast.hourlyIntervals) { interval in
-                                    HStack {
-                                        Text(String(format: "%02d:00", interval.hour))
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 50, alignment: .leading)
-                                        
-                                        Spacer()
-                                        
-                                        VStack(alignment: .trailing, spacing: 2) {
-                                            Text(interval.activity.rawValue)
-                                                .font(.subheadline)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(colorForActivity(interval.activity))
-                                            
-                                            if interval.isEnhanced {
-                                                Text("Picco Potenziato")
-                                                    .font(.system(size: 9))
-                                                    .fontWeight(.black)
-                                                    .foregroundColor(.red)
-                                            } else if interval.isMajorPeriod {
-                                                Text("Periodo Maggiore")
-                                                    .font(.system(size: 9))
-                                                    .foregroundColor(.amberText)
-                                            } else if interval.isMinorPeriod {
-                                                Text("Periodo Minore")
-                                                    .font(.system(size: 9))
-                                                    .foregroundColor(.cyan)
-                                            }
-                                        }
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
-                                        
-                                        // Visual rating dots
-                                        HStack(spacing: 4) {
-                                            ForEach(0..<3) { idx in
-                                                Circle()
-                                                    .fill(idx < interval.activity.score ? colorForActivity(interval.activity) : Color.white.opacity(0.1))
-                                                    .frame(width: 8, height: 8)
-                                            }
-                                        }
-                                        .padding(.leading, 8)
-                                    }
-                                    .padding(.horizontal)
-                                    .padding(.vertical, 10)
-                                    .background(intervalBackgroundColor(interval))
-                                    .cornerRadius(8)
-                                }
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.04))
-                            .cornerRadius(16)
-                            .padding(.horizontal)
+                            // Timeline omitted as requested by user
                         }
                         
                         Spacer(minLength: 40)

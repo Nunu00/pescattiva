@@ -136,7 +136,13 @@ public class TideEngine {
             rawHeight += const.amp * cos(argument)
         }
         
-        let coeff = calculateTideCoefficient(at: date, coordinate: coordinate)
+        // Use a constant coefficient for the day of this date (calculated at 12:00 local time)
+        var localCalendar = Calendar.current
+        localCalendar.timeZone = TimeZone.current
+        let startOfDay = localCalendar.startOfDay(for: date)
+        let midDay = localCalendar.date(byAdding: .hour, value: 12, to: startOfDay) ?? date
+        
+        let coeff = calculateTideCoefficient(at: midDay, coordinate: coordinate)
         return rawHeight * (coeff / 70.0)
     }
     
