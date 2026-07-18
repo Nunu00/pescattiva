@@ -428,6 +428,15 @@ struct TideChartView: View {
                 zeroPath.addLine(to: CGPoint(x: width, y: height / 2))
                 context.stroke(zeroPath, with: .color(Color.white.opacity(0.15)), lineWidth: 1)
                 
+                // Draw vertical grid lines
+                for hour in [6, 12, 18] {
+                    let gridX = (Double(hour) / 24.0) * Double(width)
+                    var gridPath = Path()
+                    gridPath.move(to: CGPoint(x: gridX, y: 0))
+                    gridPath.addLine(to: CGPoint(x: gridX, y: height))
+                    context.stroke(gridPath, with: .color(Color.white.opacity(0.1)), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                }
+                
                 // Scale vertical coordinates based on max Mediterranean amplitude (e.g. max 0.3m height)
                 let maxAmplitude = max(forecast.maxTideAmplitude, 0.1)
                 let scaleY = (height / 2 - 20) / maxAmplitude
@@ -467,8 +476,32 @@ struct TideChartView: View {
                     let dotRect = CGRect(x: drawX - 6, y: Double(drawY) - 6, width: 12, height: 12)
                     context.fill(Path(ellipseIn: dotRect), with: .color(event.type == .alta ? .green : .cyan))
                     context.stroke(Path(ellipseIn: dotRect), with: .color(.white), lineWidth: 1.5)
+                    
+                    // Draw time text next to dot
+                    let timeStr = formatter.string(from: event.time)
+                    let text = Text(timeStr)
+                        .font(.system(size: 9))
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    let yOffset: CGFloat = event.type == .alta ? -18 : 8
+                    context.draw(text, at: CGPoint(x: drawX, y: drawY + yOffset), anchor: .center)
                 }
             }
+            
+            // Time Axis Labels
+            HStack {
+                Text("00:00").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+                Spacer()
+                Text("06:00").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+                Spacer()
+                Text("12:00").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+                Spacer()
+                Text("18:00").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+                Spacer()
+                Text("24:00").font(.system(size: 9)).foregroundColor(.white.opacity(0.4))
+            }
+            .padding(.horizontal, 4)
             
             // Legend
             HStack(spacing: 12) {
