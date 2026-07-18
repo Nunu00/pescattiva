@@ -103,7 +103,7 @@ public class RulesEngine {
             guard let intervalStart = calendar.date(byAdding: .hour, value: hour, to: startOfDay),
                   let intervalEnd = calendar.date(byAdding: .hour, value: hour + 1, to: startOfDay) else { continue }
             
-            var hourScore = baseScore
+            var hourScore = 0.5 // baseline activity
             var isMajor = false
             var isMinor = false
             var isEnhanced = false
@@ -132,15 +132,15 @@ public class RulesEngine {
             let hStart = TideEngine.calculateHeight(at: intervalStart, coordinate: location.coordinate)
             let hEnd = TideEngine.calculateHeight(at: intervalEnd, coordinate: location.coordinate)
             let tideMovement = abs(hEnd - hStart)
-            hourScore += tideMovement * 2.0 // add bonus for active tide movement
+            hourScore += tideMovement * 10.0 // add bonus for active tide movement (multiplied by 10 for Mediterranean ranges)
             
             // Map score to Activity level
             let level: ActivityLevel
-            if hourScore < 1.2 {
+            if hourScore < 1.0 {
                 level = .bassa
-            } else if hourScore < 2.0 {
+            } else if hourScore < 1.8 {
                 level = .media
-            } else if hourScore < 3.0 {
+            } else if hourScore < 2.8 {
                 level = .alta
             } else {
                 level = .moltoAlta
@@ -172,19 +172,16 @@ public class RulesEngine {
             dailyScore += 0.5 // intermediate phases
         }
         
-        // Add contribution from the active periods
-        let activeScoreSum = intervals.filter { $0.isMajorPeriod || $0.isMinorPeriod }.map { $0.score }.reduce(0.0, +)
-        let activeCount = Double(intervals.filter { $0.isMajorPeriod || $0.isMinorPeriod }.count)
-        if activeCount > 0 {
-            dailyScore += (activeScoreSum / activeCount) * 0.5
-        }
+        // Add solunar bonus: +0.25 for each enhanced period that overlaps with sunrise/sunset
+        let enhancedCount = Double(periods.filter { $0.isEnhanced }.count)
+        dailyScore += enhancedCount * 0.25
         
         let dailyLevel: ActivityLevel
-        if dailyScore < 1.8 {
+        if dailyScore < 1.2 {
             dailyLevel = .bassa
-        } else if dailyScore < 2.5 {
+        } else if dailyScore < 2.0 {
             dailyLevel = .media
-        } else if dailyScore < 3.3 {
+        } else if dailyScore < 2.8 {
             dailyLevel = .alta
         } else {
             dailyLevel = .moltoAlta
