@@ -32,6 +32,40 @@ struct ContentView: View {
         return formatter
     }
     
+    private var calendarDays: [Date] {
+        let calendar = Calendar.current
+        guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedDate)) else { return [] }
+        let range = calendar.range(of: .day, in: .month, for: startOfMonth)!
+        
+        var days: [Date] = []
+        for day in range {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: startOfMonth) {
+                days.append(date)
+            }
+        }
+        return days
+    }
+    
+    private func activityForDate(_ date: Date) -> ActivityLevel {
+        let temp = Double(waterTempCelsius)
+        let forecast = RulesEngine.evaluateForecast(
+            date: date,
+            location: selectedLocation,
+            weather: WeatherFactor(cloudCoverPercent: 0, windDirectionChange: 0, swellHeight: 0, surfaceTempDelta24h: 0),
+            waterTempCelsius: temp
+        )
+        return forecast.dailyActivity
+    }
+    
+    private func monthYearString(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: date).capitalized
+    }
+    
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -130,6 +164,79 @@ struct ContentView: View {
                         )
                         .padding(.horizontal)
                         
+                        // 1a. Monthly Efficacy Calendar Card
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "calendar")
+                                    .foregroundColor(.teal)
+                                    .font(.headline)
+                                Text("Calendario Efficacia Mensile")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text(monthYearString(for: selectedDate))
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            
+                            // Days of week header
+                            HStack(spacing: 0) {
+                                ForEach(["Lu", "Ma", "Me", "Gi", "Ve", "Sa", "Do"], id: \.self) { day in
+                                    Text(day)
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white.opacity(0.4))
+                                        .frame(maxWidth: .infinity)
+                                }
+                            }
+                            
+                            let days = calendarDays
+                            let firstDayOfWeek = Calendar.current.component(.weekday, from: days.first ?? Date())
+                            // In iOS: Sunday is 1, Monday is 2, ..., Saturday is 7.
+                            // Convert to 0-indexed starting on Monday:
+                            let leadingEmptySlots = (firstDayOfWeek + 5) % 7
+                            
+                            LazyVGrid(columns: columns, spacing: 6) {
+                                ForEach(0..<leadingEmptySlots, id: \.self) { _ in
+                                    Color.clear
+                                        .frame(height: 32)
+                                }
+                                
+                                ForEach(days, id: \.self) { date in
+                                    let activity = activityForDate(date)
+                                    let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+                                    
+                                    Text("\(Calendar.current.component(.day, from: date))")
+                                        .font(.footnote)
+                                        .fontWeight(isSelected ? .bold : .medium)
+                                        .foregroundColor(isSelected ? .black : .white)
+                                        .frame(height: 32)
+                                        .frame(maxWidth: .infinity)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(isSelected ? Color.white : colorForActivity(activity).opacity(0.25))
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(colorForActivity(activity), lineWidth: isSelected ? 2 : 1)
+                                        )
+                                        .onTapGesture {
+                                            selectedDate = date
+                                            calculateForecast()
+                                            updateWeatherAutomatically()
+                                        }
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color.white.opacity(0.04))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                        .padding(.horizontal)
+                        
                         // 1b. Environmental Conditions Card
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
@@ -155,91 +262,93 @@ struct ContentView: View {
                                     .foregroundColor(.red.opacity(0.8))
                             }
                             
-                            VStack(spacing: 16) {
+                            VStack(spacing: 12) {
                                 // Water Temp
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Temp. Acqua").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                        Spacer()
+                                HStack {
+                                    Image(systemName: "thermometer.medium")
+                                        .foregroundColor(.teal)
+                                        .frame(width: 20)
+                                    Text("Temp. Acqua")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 2) {
                                         Text("\(Int(waterTempCelsius))°C")
                                             .font(.subheadline)
                                             .fontWeight(.bold)
                                             .foregroundColor(.teal)
+                                        Text(waterTempCelsius < 15 ? "Metabolismo ridotto (freddo)" : (waterTempCelsius > 25 ? "Letargici (caldo)" : "Condizione ottimale (Q10)"))
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.white.opacity(0.5))
                                     }
-                                    Slider(value: $waterTempCelsius, in: 5...35, step: 1)
-                                        .accentColor(.teal)
-                                        .disabled(true)
-                                    Text(waterTempCelsius < 15 ? "Metabolismo ridotto (freddo)" : (waterTempCelsius > 25 ? "Pesci letargici (caldo)" : "Condizione ottimale (Q10)"))
-                                        .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.5))
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
                                 
                                 // Cloud Cover
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Nuvolosità").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                        Spacer()
-                                        Text("\(Int(cloudCover))%")
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                    }
-                                    Slider(value: $cloudCover, in: 0...100, step: 5)
-                                        .accentColor(.cyan)
-                                        .disabled(true)
+                                HStack {
+                                    Image(systemName: "cloud.fill")
+                                        .foregroundColor(.cyan)
+                                        .frame(width: 20)
+                                    Text("Nuvolosità")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Text("\(Int(cloudCover))%")
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.cyan)
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
                                 
                                 // Wind Change
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Variazione Direzione Vento").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                        Spacer()
-                                        Text("\(Int(windDirectionChange))°")
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.orange)
-                                    }
-                                    Slider(value: $windDirectionChange, in: 0...180, step: 5)
-                                        .accentColor(.orange)
-                                        .disabled(true)
+                                HStack {
+                                    Image(systemName: "wind")
+                                        .foregroundColor(.orange)
+                                        .frame(width: 20)
+                                    Text("Variazione Direzione Vento")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Text("\(Int(windDirectionChange))°")
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.orange)
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
                                 
                                 // Swell Height
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Altezza Onda (Swell)").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                        Spacer()
-                                        Text(String(format: "%.1f m", swellHeight))
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.blue)
-                                    }
-                                    Slider(value: $swellHeight, in: 0.0...3.0, step: 0.1)
-                                        .accentColor(.blue)
-                                        .disabled(true)
+                                HStack {
+                                    Image(systemName: "water.waves")
+                                        .foregroundColor(.blue)
+                                        .frame(width: 20)
+                                    Text("Altezza Onda (Swell)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Text(String(format: "%.1f m", swellHeight))
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.blue)
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
                                 
                                 // Surface Temp Delta
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Variazione Temp. Superficiale (24h)").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                        Spacer()
-                                        Text(String(format: "%+.1f°C", surfaceTempDelta24h))
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
-                                    }
-                                    Slider(value: $surfaceTempDelta24h, in: -3.0...3.0, step: 0.1)
-                                        .accentColor(surfaceTempDelta24h < -1.5 ? .green : .white)
-                                        .disabled(true)
+                                HStack {
+                                    Image(systemName: "thermometer.snowflake")
+                                        .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
+                                        .frame(width: 20)
+                                    Text("Variazione Temp. Superficiale (24h)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Text(String(format: "%+.1f°C", surfaceTempDelta24h))
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
