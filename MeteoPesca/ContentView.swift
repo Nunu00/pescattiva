@@ -88,7 +88,8 @@ struct ContentView: View {
                 let anomalyAtDay7 = day7SST - day7Climatology
                 
                 let daysAhead = Double(daysDifference - 7)
-                let decayFactor = exp(-daysAhead / 15.0)
+                let tau = decorrelationTime(for: startOfDay)
+                let decayFactor = exp(-daysAhead / tau)
                 sst = seasonalWaterTemp + anomalyAtDay7 * decayFactor
             }
         }
@@ -146,6 +147,15 @@ struct ContentView: View {
         let angle = (dayOfYear - 230.0) / 365.0 * 2.0 * Double.pi
         let meanSst = 19.5 + 6.5 * cos(angle)
         return meanSst
+    }
+    
+    private func decorrelationTime(for date: Date) -> Double {
+        let month = Calendar.current.component(.month, from: date)
+        switch month {
+        case 6...9: return 20.0   // estate: forte stratificazione, persistenza lunga
+        case 10...11, 3...5: return 12.0  // transizione: mixing moderato
+        default: return 8.0       // inverno: mixing intenso, decorrelazione rapida
+        }
     }
     
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
@@ -300,11 +310,13 @@ struct ContentView: View {
                                     Color.clear
                                         .frame(height: 32)
                                 }
-                                
-                                ForEach(days, id: \.self) { date in
+                                                                 ForEach(days, id: \.self) { date in
                                     let activity = activityForDate(date)
                                     let isToday = Calendar.current.isDate(date, inSameDayAs: Date())
                                     let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+                                    
+                                    let daysDiff = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: Calendar.current.startOfDay(for: date)).day ?? 0
+                                    let isForecastAvailable = (daysDiff >= -1 && daysDiff <= 7)
                                     
                                     VStack(spacing: 2) {
                                         Text("\(Calendar.current.component(.day, from: date))")
@@ -320,19 +332,80 @@ struct ContentView: View {
                                     }
                                     .frame(height: 32)
                                     .frame(maxWidth: .infinity)
+                                    .opacity(isSelected || isToday || isForecastAvailable ? 1.0 : 0.75)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(isSelected ? Color.white : colorForActivity(activity).opacity(0.25))
+                                            .fill(isSelected ? Color.white : colorForActivity(activity).opacity(isForecastAvailable ? 0.25 : 0.12))
                                     )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .stroke(isToday && !isSelected ? Color.teal : colorForActivity(activity), lineWidth: isSelected ? 2.5 : (isToday ? 2.0 : 1.0))
+                                            .stroke(
+                                                isToday && !isSelected ? Color.teal : colorForActivity(activity).opacity(isForecastAvailable ? 1.0 : 0.5),
+                                                style: StrokeStyle(
+                                                    lineWidth: isSelected ? 2.5 : (isToday ? 2.0 : 1.0),
+                                                    lineCap: .round,
+                                                    lineJoin: .round,
+                                                    dash: isForecastAvailable ? [] : [2, 2]
+                                                )
+                                            )
                                     )
-                                        .onTapGesture {
+                                    .onTapGesture {
                                             selectedDate = date
                                             calculateForecast()
                                             updateWeatherAutomatically()
                                         }
+                            }
+                            
+                            // Legenda del calendario
+                            VStack(alignment: .leading, spacing: 8) {
+                                Divider()
+                                    .background(Color.white.opacity(0.1))
+                                    .padding(.vertical, 4)
+                                
+                                Text("LEGENDA CALENDARIO")
+                                    .font(.system(size: 9))
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .tracking(1)
+                                
+                                HStack(alignment: .top, spacing: 16) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack(spacing: 4) {
+                                            RoundedRectangle(cornerRadius: 3)
+                                                .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                                                .frame(width: 12, height: 12)
+                                            Text("Previsioni Reali").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
+                                        }
+                                        
+                                        HStack(spacing: 4) {
+                                            RoundedRectangle(cornerRadius: 3)
+                                                .stroke(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                                                .frame(width: 12, height: 12)
+                                            Text("Stima Climatologica").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
+                                        }
+                                        
+                                        HStack(spacing: 4) {
+                                            Circle()
+                                                .fill(Color.teal)
+                                                .frame(width: 6, height: 6)
+                                            Text("Oggi (Giorno corrente)").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
+                                        }
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Efficacia Pesca:").font(.system(size: 9)).foregroundColor(.white.opacity(0.5))
+                                        
+                                        HStack(spacing: 6) {
+                                            ForEach(ActivityLevel.allCases, id: \.self) { level in
+                                                HStack(spacing: 2) {
+                                                    Circle()
+                                                        .fill(colorForActivity(level))
+                                                        .frame(width: 6, height: 6)
+                                                    Text(level.rawValue).font(.system(size: 8)).foregroundColor(.white.opacity(0.7))
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -848,7 +921,8 @@ struct ContentView: View {
                 let anomalyAtDay7 = day7SST - day7Climatology
                 
                 let daysAhead = Double(daysDifference - 7)
-                let decayFactor = exp(-daysAhead / 15.0)
+                let tau = decorrelationTime(for: startOfSelected)
+                let decayFactor = exp(-daysAhead / tau)
                 let projectedSst = seasonalWaterTemp + anomalyAtDay7 * decayFactor
                 
                 self.waterTempCelsius = projectedSst
