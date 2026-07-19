@@ -13,9 +13,8 @@ public class RulesEngine {
         moonAntiTransit: Date?,
         moonAge: Double,
         tides: [TideEvent],
-        weather: WeatherCondition = .sereno,
-        waterTemp: WaterTemp = .ideale,
-        wind: WindCondition = .calmo
+        weather: WeatherFactor = WeatherFactor(cloudCoverPercent: 20.0, windDirectionChange: 10.0, swellHeight: 0.2, surfaceTempDelta24h: 0.0),
+        waterTempCelsius: Double = 20.0
     ) -> DailyForecast {
         
         var calendar = Calendar.current
@@ -176,9 +175,15 @@ public class RulesEngine {
         
         // Combine multiplicatively and apply environmental modulations
         var score = fPhase * fDist * fCoeff * fOverlap
-        score *= weather.multiplier
-        score *= waterTemp.multiplier
-        score *= wind.multiplier
+        
+        // Weather composite factor
+        score *= weather.multiplier()
+        
+        // Bell-shaped Water Temp factor (Gaussian optimal performance curve at 20°C with sigma=5.0)
+        let tOpt = 20.0
+        let sigma = 5.0
+        let fWaterTemp = exp(-pow(waterTempCelsius - tOpt, 2.0) / (2.0 * pow(sigma, 2.0)))
+        score *= fWaterTemp
         
         // Map continuous score to daily activity level using optimized thresholds:
         // T1 = 0.166, T2 = 0.416, T3 = 1.288

@@ -116,52 +116,29 @@ public struct DailyForecast: Identifiable, Codable {
     public var hourlyIntervals: [HourlyInterval]
 }
 
-public enum WeatherCondition: String, Codable, CaseIterable, Identifiable {
-    case sereno = "Sereno / Poco Nuvoloso"
-    case coperto = "Coperto / Pioggia Leggera"
-    case temporaleImminente = "Temporale Imminente"
-    case pioggiaForte = "Temporale / Pioggia Forte"
-    
-    public var id: String { self.rawValue }
-    
-    public var multiplier: Double {
-        switch self {
-        case .sereno: return 1.0
-        case .coperto: return 1.10
-        case .temporaleImminente: return 1.25
-        case .pioggiaForte: return 0.80
-        }
-    }
-}
+public struct WeatherFactor: Codable, Hashable {
+    public var cloudCoverPercent: Double      // 0-100
+    public var windDirectionChange: Double    // gradi di variazione ultime 3h
+    public var swellHeight: Double            // metri, se disponibile per zona costiera
+    public var surfaceTempDelta24h: Double    // variazione °C ultime 24h
 
-public enum WaterTemp: String, Codable, CaseIterable, Identifiable {
-    case fredda = "Fredda"
-    case ideale = "Ideale (Ottimale)"
-    case calda = "Troppo Calda"
-    
-    public var id: String { self.rawValue }
-    
-    public var multiplier: Double {
-        switch self {
-        case .fredda: return 0.80
-        case .ideale: return 1.20
-        case .calda: return 0.70
-        }
+    public init(cloudCoverPercent: Double, windDirectionChange: Double, swellHeight: Double, surfaceTempDelta24h: Double) {
+        self.cloudCoverPercent = cloudCoverPercent
+        self.windDirectionChange = windDirectionChange
+        self.swellHeight = swellHeight
+        self.surfaceTempDelta24h = surfaceTempDelta24h
     }
-}
 
-public enum WindCondition: String, Codable, CaseIterable, Identifiable {
-    case calmo = "Calmo / Brezza Leggera"
-    case moderato = "Vento Moderato (Increspatura)"
-    case forte = "Vento Forte / Burrasca"
-    
-    public var id: String { self.rawValue }
-    
-    public var multiplier: Double {
-        switch self {
-        case .calmo: return 1.0
-        case .moderato: return 1.15
-        case .forte: return 0.60
-        }
+    public func multiplier() -> Double {
+        var m = 1.0
+        // Nuvolosità estende la finestra di alba/tramonto: bonus se >60%
+        if cloudCoverPercent > 60.0 { m += 0.15 }
+        // Cambio vento recente riposiziona i pesci: bonus nella prima ora dopo il cambio
+        if windDirectionChange > 30.0 { m += 0.10 }
+        // Swell in aumento smuove il cibo dal fondale
+        if swellHeight > 0.5 { m += 0.10 }
+        // Rottura della stratificazione termica in estate: bonus se calo repentino
+        if surfaceTempDelta24h < -1.5 { m += 0.10 }
+        return m
     }
 }

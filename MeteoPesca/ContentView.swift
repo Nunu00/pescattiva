@@ -9,10 +9,12 @@ struct ContentView: View {
     @State private var savedLocations: [Location] = TideEngine.stations
     @State private var forecast: DailyForecast?
     
-    // Environmental conditions state
-    @State private var selectedWeather: WeatherCondition = .sereno
-    @State private var selectedWaterTemp: WaterTemp = .ideale
-    @State private var selectedWind: WindCondition = .calmo
+    // Environmental conditions state variables
+    @State private var cloudCover: Double = 20.0
+    @State private var windDirectionChange: Double = 10.0
+    @State private var swellHeight: Double = 0.2
+    @State private var surfaceTempDelta24h: Double = 0.0
+    @State private var waterTempCelsius: Double = 20.0
     
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
@@ -126,47 +128,91 @@ struct ContentView: View {
                         .padding(.horizontal)
                         
                         // 1b. Environmental Conditions Card
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 14) {
                             Text("Fattori Ambientali (Meteo Empirico)")
                                 .font(.headline)
                                 .foregroundColor(.white)
                             
-                            VStack(spacing: 12) {
-                                HStack {
-                                    Text("Condizione Meteo").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Picker("Meteo", selection: $selectedWeather) {
-                                        ForEach(WeatherCondition.allCases) { cond in
-                                            Text(cond.rawValue).tag(cond)
-                                        }
+                            VStack(spacing: 16) {
+                                // Water Temp
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Temp. Acqua").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text("\(Int(waterTempCelsius))°C")
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.teal)
                                     }
-                                    .pickerStyle(.menu)
+                                    Slider(value: $waterTempCelsius, in: 5...35, step: 1)
+                                        .accentColor(.teal)
+                                    Text(waterTempCelsius < 15 ? "Metabolismo ridotto (freddo)" : (waterTempCelsius > 25 ? "Pesci letargici (caldo)" : "Condizione ottimale (Q10)"))
+                                        .font(.caption2)
+                                        .foregroundColor(.white.opacity(0.5))
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
                                 
-                                HStack {
-                                    Text("Temperatura Acqua").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Picker("Acqua", selection: $selectedWaterTemp) {
-                                        ForEach(WaterTemp.allCases) { temp in
-                                            Text(temp.rawValue).tag(temp)
-                                        }
+                                // Cloud Cover
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Nuvolosità").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text("\(Int(cloudCover))%")
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
                                     }
-                                    .pickerStyle(.menu)
+                                    Slider(value: $cloudCover, in: 0...100, step: 5)
+                                        .accentColor(.cyan)
                                 }
                                 
                                 Divider().background(Color.white.opacity(0.1))
                                 
-                                HStack {
-                                    Text("Condizione Vento").font(.subheadline).foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Picker("Vento", selection: $selectedWind) {
-                                        ForEach(WindCondition.allCases) { w in
-                                            Text(w.rawValue).tag(w)
-                                        }
+                                // Wind Change
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Variazione Direzione Vento").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text("\(Int(windDirectionChange))°")
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.orange)
                                     }
-                                    .pickerStyle(.menu)
+                                    Slider(value: $windDirectionChange, in: 0...180, step: 5)
+                                        .accentColor(.orange)
+                                }
+                                
+                                Divider().background(Color.white.opacity(0.1))
+                                
+                                // Swell Height
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Altezza Onda (Swell)").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text(String(format: "%.1f m", swellHeight))
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.blue)
+                                    }
+                                    Slider(value: $swellHeight, in: 0.0...3.0, step: 0.1)
+                                        .accentColor(.blue)
+                                }
+                                
+                                Divider().background(Color.white.opacity(0.1))
+                                
+                                // Surface Temp Delta
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Variazione Temp. Superficiale (24h)").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text(String(format: "%+.1f°C", surfaceTempDelta24h))
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
+                                    }
+                                    Slider(value: $surfaceTempDelta24h, in: -3.0...3.0, step: 0.1)
+                                        .accentColor(surfaceTempDelta24h < -1.5 ? .green : .white)
                                 }
                             }
                             .padding()
@@ -374,9 +420,11 @@ struct ContentView: View {
             }
             .onAppear(perform: calculateForecast)
             .onChange(of: selectedDate) { _ in calculateForecast() }
-            .onChange(of: selectedWeather) { _ in calculateForecast() }
-            .onChange(of: selectedWaterTemp) { _ in calculateForecast() }
-            .onChange(of: selectedWind) { _ in calculateForecast() }
+            .onChange(of: cloudCover) { _ in calculateForecast() }
+            .onChange(of: windDirectionChange) { _ in calculateForecast() }
+            .onChange(of: swellHeight) { _ in calculateForecast() }
+            .onChange(of: surfaceTempDelta24h) { _ in calculateForecast() }
+            .onChange(of: waterTempCelsius) { _ in calculateForecast() }
         }
         .preferredColorScheme(.dark)
     }
@@ -401,6 +449,13 @@ struct ContentView: View {
         let tides = TideEngine.calculateDailyTides(date: startOfDay, coordinate: coord)
         
         // 3. Evaluate solunar rules and fish activity scoring
+        let weatherFactor = WeatherFactor(
+            cloudCoverPercent: cloudCover,
+            windDirectionChange: windDirectionChange,
+            swellHeight: swellHeight,
+            surfaceTempDelta24h: surfaceTempDelta24h
+        )
+        
         let forecastResult = RulesEngine.evaluateForecast(
             date: startOfDay,
             location: selectedLocation,
@@ -412,9 +467,8 @@ struct ContentView: View {
             moonAntiTransit: astro.moonAntiTransit,
             moonAge: astro.moonAge,
             tides: tides,
-            weather: selectedWeather,
-            waterTemp: selectedWaterTemp,
-            wind: selectedWind
+            weather: weatherFactor,
+            waterTempCelsius: waterTempCelsius
         )
         
         self.forecast = forecastResult
