@@ -318,11 +318,17 @@ struct ContentView: View {
                                     let daysDiff = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: Calendar.current.startOfDay(for: date)).day ?? 0
                                     let isForecastAvailable = (daysDiff >= -1 && daysDiff <= 7)
                                     
+                                    // Pre-calculate style properties to prevent Swift compiler type-checking time-out
+                                    let textColor: Color = isSelected ? .black : (isToday ? .teal : (isForecastAvailable ? .white : .white.opacity(0.65)))
+                                    let cellBg: Color = isSelected ? .white : (isForecastAvailable ? colorForActivity(activity).opacity(0.3) : Color.white.opacity(0.02))
+                                    let strokeColor: Color = isToday && !isSelected ? Color.teal : colorForActivity(activity).opacity(isForecastAvailable ? 1.0 : 0.45)
+                                    let dashPattern: [CGFloat] = isForecastAvailable ? [] : [4, 3]
+                                    
                                     VStack(spacing: 2) {
                                         Text("\(Calendar.current.component(.day, from: date))")
                                             .font(.footnote)
                                             .fontWeight(isSelected ? .bold : (isToday ? .bold : .medium))
-                                            .foregroundColor(isSelected ? .black : (isToday ? .teal : (isForecastAvailable ? .white : .white.opacity(0.65))))
+                                            .foregroundColor(textColor)
                                         
                                         if isToday {
                                             Circle()
@@ -334,17 +340,17 @@ struct ContentView: View {
                                     .frame(maxWidth: .infinity)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(isSelected ? Color.white : (isForecastAvailable ? colorForActivity(activity).opacity(0.3) : Color.white.opacity(0.02)))
+                                            .fill(cellBg)
                                     )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
                                             .stroke(
-                                                isToday && !isSelected ? Color.teal : colorForActivity(activity).opacity(isForecastAvailable ? 1.0 : 0.45),
+                                                strokeColor,
                                                 style: StrokeStyle(
                                                     lineWidth: isSelected ? 2.5 : (isToday ? 2.0 : 1.0),
                                                     lineCap: .round,
                                                     lineJoin: .round,
-                                                    dash: isForecastAvailable ? [] : [4, 3]
+                                                    dash: dashPattern
                                                 )
                                             )
                                     )
