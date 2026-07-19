@@ -86,6 +86,15 @@ struct ContentView: View {
         return formatter.string(from: date).capitalized
     }
     
+    private func changeMonth(by value: Int) {
+        let calendar = Calendar.current
+        if let newDate = calendar.date(byAdding: .month, value: value, to: selectedDate) {
+            selectedDate = newDate
+            calculateForecast()
+            updateWeatherAutomatically()
+        }
+    }
+    
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
     
     var body: some View {
@@ -104,14 +113,6 @@ struct ContentView: View {
                         
                         // 1. Selector Section
                         VStack(spacing: 12) {
-                            DatePicker("Seleziona Data", selection: $selectedDate, displayedComponents: [.date])
-                                .datePickerStyle(.compact)
-                                .environment(\.locale, Locale(identifier: "it"))
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .background(Color.white.opacity(0.06))
-                                .cornerRadius(12)
-                            
                             HStack {
                                 Text("Località")
                                     .foregroundColor(.white.opacity(0.8))
@@ -192,13 +193,35 @@ struct ContentView: View {
                                 Image(systemName: "calendar")
                                     .foregroundColor(.teal)
                                     .font(.headline)
-                                Text("Calendario Efficacia Mensile")
+                                Text("Calendario Efficacia")
                                     .font(.headline)
                                     .foregroundColor(.white)
                                 Spacer()
-                                Text(monthYearString(for: selectedDate))
-                                    .font(.subheadline)
-                                    .foregroundColor(.white.opacity(0.7))
+                                HStack(spacing: 8) {
+                                    Button(action: { changeMonth(by: -1) }) {
+                                        Image(systemName: "chevron.left")
+                                            .foregroundColor(.teal)
+                                            .fontWeight(.bold)
+                                            .padding(6)
+                                            .background(Color.white.opacity(0.06))
+                                            .cornerRadius(6)
+                                    }
+                                    
+                                    Text(monthYearString(for: selectedDate))
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .frame(minWidth: 95, alignment: .center)
+                                    
+                                    Button(action: { changeMonth(by: 1) }) {
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(.teal)
+                                            .fontWeight(.bold)
+                                            .padding(6)
+                                            .background(Color.white.opacity(0.06))
+                                            .cornerRadius(6)
+                                    }
+                                }
                             }
                             
                             // Days of week header
@@ -446,6 +469,14 @@ struct ContentView: View {
                             .padding(.horizontal)
                             
                             // 2b. Detailed Factor Breakdown Section
+                            let sumFactors = forecast.moonPhaseFactor + forecast.moonDistanceFactor + forecast.tideCoeffFactor + forecast.solunarOverlapFactor + forecast.weatherFactorVal + forecast.waterTempFactor
+                            let normMoonPhase = (forecast.moonPhaseFactor / sumFactors) * 100.0
+                            let normMoonDist = (forecast.moonDistanceFactor / sumFactors) * 100.0
+                            let normTide = (forecast.tideCoeffFactor / sumFactors) * 100.0
+                            let normOverlap = (forecast.solunarOverlapFactor / sumFactors) * 100.0
+                            let normWeather = (forecast.weatherFactorVal / sumFactors) * 100.0
+                            let normWaterTemp = (forecast.waterTempFactor / sumFactors) * 100.0
+                            
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Analisi dei Fattori Costieri & Lunari")
                                     .font(.subheadline)
@@ -454,12 +485,12 @@ struct ContentView: View {
                                     .tracking(0.5)
                                 
                                 VStack(spacing: 8) {
-                                    FactorRow(name: "Fase Lunare (Novilunio/Plenilunio)", value: String(format: "%.0f%%", forecast.moonPhaseFactor * 100.0), icon: "moon.stars.fill", color: .yellow)
-                                    FactorRow(name: "Gravità Luna (Apogeo/Perigeo)", value: String(format: "%.0f%%", forecast.moonDistanceFactor * 100.0), icon: "scalemass.fill", color: .purple)
-                                    FactorRow(name: "Coefficiente di Marea (Ampiezza)", value: String(format: "%.0f%%", forecast.tideCoeffFactor * 100.0), icon: "water.waves", color: .blue)
-                                    FactorRow(name: "Allineamenti Solunari (Coincidenze)", value: String(format: "%.0f%%", forecast.solunarOverlapFactor * 100.0), icon: "sparkles", color: .orange)
-                                    FactorRow(name: "Fattori Meteo Compositi", value: String(format: "%.0f%%", forecast.weatherFactorVal * 100.0), icon: "cloud.sun.fill", color: .cyan)
-                                    FactorRow(name: "Temperatura Acqua (Metabolismo Q10)", value: String(format: "%.0f%%", forecast.waterTempFactor * 100.0), icon: "thermometer.medium", color: .teal)
+                                    FactorRow(name: "Fase Lunare (Novilunio/Plenilunio)", value: String(format: "%.1f%%", normMoonPhase), icon: "moon.stars.fill", color: .yellow)
+                                    FactorRow(name: "Gravità Luna (Apogeo/Perigeo)", value: String(format: "%.1f%%", normMoonDist), icon: "scalemass.fill", color: .purple)
+                                    FactorRow(name: "Coefficiente di Marea (Ampiezza)", value: String(format: "%.1f%%", normTide), icon: "water.waves", color: .blue)
+                                    FactorRow(name: "Allineamenti Solunari (Coincidenze)", value: String(format: "%.1f%%", normOverlap), icon: "sparkles", color: .orange)
+                                    FactorRow(name: "Fattori Meteo Compositi", value: String(format: "%.1f%%", normWeather), icon: "cloud.sun.fill", color: .cyan)
+                                    FactorRow(name: "Temperatura Acqua (Metabolismo Q10)", value: String(format: "%.1f%%", normWaterTemp), icon: "thermometer.medium", color: .teal)
                                 }
                             }
                             .padding()
@@ -682,6 +713,43 @@ struct ContentView: View {
         let coord = selectedLocation.coordinate
         isFetchingWeather = true
         weatherErrorMessage = nil
+        
+        let calendar = Calendar.current
+        let today = Date()
+        let daysDifference = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: calendar.startOfDay(for: selectedDate)).day ?? 0
+        
+        if daysDifference < -1 || daysDifference > 7 {
+            // For distant dates (past or future), fall back to climatological averages for the month
+            let month = calendar.component(.month, from: selectedDate)
+            var seasonalWaterTemp = 20.0
+            
+            // Typical Mediterranean coastal sea temperatures by month:
+            // Jan-Feb: 13, Mar: 14, Apr: 16, May: 18, Jun: 22, Jul: 25, Aug: 26, Sep: 24, Oct: 21, Nov: 18, Dec: 15
+            switch month {
+            case 1, 2: seasonalWaterTemp = 13.0
+            case 3: seasonalWaterTemp = 14.0
+            case 4: seasonalWaterTemp = 16.0
+            case 5: seasonalWaterTemp = 18.0
+            case 6: seasonalWaterTemp = 22.0
+            case 7: seasonalWaterTemp = 25.0
+            case 8: seasonalWaterTemp = 26.0
+            case 9: seasonalWaterTemp = 24.0
+            case 10: seasonalWaterTemp = 21.0
+            case 11: seasonalWaterTemp = 18.0
+            case 12: seasonalWaterTemp = 15.0
+            default: seasonalWaterTemp = 20.0
+            }
+            
+            self.cloudCover = 20.0
+            self.windDirectionChange = 0.0
+            self.swellHeight = 0.2
+            self.surfaceTempDelta24h = 0.0
+            self.waterTempCelsius = seasonalWaterTemp
+            self.weatherErrorMessage = "* Mostrati parametri medi climatologici del mese (meteo reale non disponibile)."
+            self.isFetchingWeather = false
+            self.calculateForecast()
+            return
+        }
         
         Task {
             do {

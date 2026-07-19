@@ -89,8 +89,14 @@ public class RulesEngine {
         // 4. Build Hourly Intervals & Calculate Scores
         let weatherMult = weather.multiplier()
         let tOpt = 20.0
-        let sigma = 5.0
-        let fWaterTemp = exp(-pow(waterTempCelsius - tOpt, 2.0) / (2.0 * pow(sigma, 2.0)))
+        let sigmaCold = 5.0
+        let sigmaWarm = 10.0
+        let fWaterTemp: Double
+        if waterTempCelsius < tOpt {
+            fWaterTemp = exp(-pow(waterTempCelsius - tOpt, 2.0) / (2.0 * pow(sigmaCold, 2.0)))
+        } else {
+            fWaterTemp = max(0.70, exp(-pow(waterTempCelsius - tOpt, 2.0) / (2.0 * pow(sigmaWarm, 2.0))))
+        }
         
         var intervals: [HourlyInterval] = []
         for hour in 0..<24 {
