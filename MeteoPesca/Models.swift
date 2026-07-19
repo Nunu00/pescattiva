@@ -115,3 +115,53 @@ public struct DailyForecast: Identifiable, Codable {
     public var dailyActivity: ActivityLevel
     public var hourlyIntervals: [HourlyInterval]
 }
+
+public enum WeatherCondition: String, Codable, CaseIterable, Identifiable {
+    case sereno = "Sereno / Poco Nuvoloso"
+    case coperto = "Coperto / Pioggia Leggera"
+    case temporaleImminente = "Temporale Imminente"
+    case pioggiaForte = "Temporale / Pioggia Forte"
+    
+    public var id: String { self.rawValue }
+    
+    public var multiplier: Double {
+        switch self {
+        case .sereno: return 1.0
+        case .coperto: return 1.10
+        case .temporaleImminente: return 1.25
+        case .pioggiaForte: return 0.80
+        }
+    }
+}
+
+public enum WaterTemp: String, Codable, CaseIterable, Identifiable {
+    case fredda = "Fredda"
+    case ideale = "Ideale (Ottimale)"
+    case calda = "Troppo Calda"
+    
+    public var id: String { self.rawValue }
+    
+    public var multiplier: Double {
+        switch self {
+        case .fredda: return 0.80
+        case .ideale: return 1.20
+        case .calda: return 0.70
+        }
+    }
+}
+
+public enum WindCondition: String, Codable, CaseIterable, Identifiable {
+    case calmo = "Calmo / Brezza Leggera"
+    case moderato = "Vento Moderato (Increspatura)"
+    case forte = "Vento Forte / Burrasca"
+    
+    public var id: String { self.rawValue }
+    
+    public var multiplier: Double {
+        switch self {
+        case .calmo: return 1.0
+        case .moderato: return 1.15
+        case .forte: return 0.60
+        }
+    }
+}

@@ -12,7 +12,10 @@ public class RulesEngine {
         moonTransit: Date?,
         moonAntiTransit: Date?,
         moonAge: Double,
-        tides: [TideEvent]
+        tides: [TideEvent],
+        weather: WeatherCondition = .sereno,
+        waterTemp: WaterTemp = .ideale,
+        wind: WindCondition = .calmo
     ) -> DailyForecast {
         
         var calendar = Calendar.current
@@ -171,8 +174,11 @@ public class RulesEngine {
         let wO = 0.60
         let fOverlap = 1.0 + wO * Double(enhancedCount)
         
-        // Combine multiplicatively
-        let score = fPhase * fDist * fCoeff * fOverlap
+        // Combine multiplicatively and apply environmental modulations
+        var score = fPhase * fDist * fCoeff * fOverlap
+        score *= weather.multiplier
+        score *= waterTemp.multiplier
+        score *= wind.multiplier
         
         // Map continuous score to daily activity level using optimized thresholds:
         // T1 = 0.166, T2 = 0.416, T3 = 1.288

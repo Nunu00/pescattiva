@@ -9,6 +9,11 @@ struct ContentView: View {
     @State private var savedLocations: [Location] = TideEngine.stations
     @State private var forecast: DailyForecast?
     
+    // Environmental conditions state
+    @State private var selectedWeather: WeatherCondition = .sereno
+    @State private var selectedWaterTemp: WaterTemp = .ideale
+    @State private var selectedWind: WindCondition = .calmo
+    
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "it_IT")
@@ -110,6 +115,63 @@ struct ContentView: View {
                                 }
                                 .padding(.horizontal)
                             }
+                        }
+                        .padding()
+                        .background(Color.white.opacity(0.04))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                        .padding(.horizontal)
+                        
+                        // 1b. Environmental Conditions Card
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Fattori Ambientali (Meteo Empirico)")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            
+                            VStack(spacing: 12) {
+                                HStack {
+                                    Text("Condizione Meteo").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Picker("Meteo", selection: $selectedWeather) {
+                                        ForEach(WeatherCondition.allCases) { cond in
+                                            Text(cond.rawValue).tag(cond)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                }
+                                
+                                Divider().background(Color.white.opacity(0.1))
+                                
+                                HStack {
+                                    Text("Temperatura Acqua").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Picker("Acqua", selection: $selectedWaterTemp) {
+                                        ForEach(WaterTemp.allCases) { temp in
+                                            Text(temp.rawValue).tag(temp)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                }
+                                
+                                Divider().background(Color.white.opacity(0.1))
+                                
+                                HStack {
+                                    Text("Condizione Vento").font(.subheadline).foregroundColor(.white.opacity(0.8))
+                                    Spacer()
+                                    Picker("Vento", selection: $selectedWind) {
+                                        ForEach(WindCondition.allCases) { w in
+                                            Text(w.rawValue).tag(w)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                }
+                            }
+                            .padding()
+                            .background(Color.white.opacity(0.05))
+                            .cornerRadius(12)
                         }
                         .padding()
                         .background(Color.white.opacity(0.04))
@@ -312,6 +374,9 @@ struct ContentView: View {
             }
             .onAppear(perform: calculateForecast)
             .onChange(of: selectedDate) { _ in calculateForecast() }
+            .onChange(of: selectedWeather) { _ in calculateForecast() }
+            .onChange(of: selectedWaterTemp) { _ in calculateForecast() }
+            .onChange(of: selectedWind) { _ in calculateForecast() }
         }
         .preferredColorScheme(.dark)
     }
@@ -346,7 +411,10 @@ struct ContentView: View {
             moonTransit: astro.moonTransit,
             moonAntiTransit: astro.moonAntiTransit,
             moonAge: astro.moonAge,
-            tides: tides
+            tides: tides,
+            weather: selectedWeather,
+            waterTemp: selectedWaterTemp,
+            wind: selectedWind
         )
         
         self.forecast = forecastResult
