@@ -10,9 +10,9 @@ public struct FetchedWeatherData {
 
 public class WeatherService {
     
-    public static func fetchWeather(latitude: Double, longitude: Double) async throws -> FetchedWeatherData {
-        // 1. Fetch Forecast Data (Atmospheric Conditions)
-        let forecastUrlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=cloud_cover,wind_direction_10m&hourly=wind_direction_10m,temperature_2m&forecast_days=1"
+    public static func fetch7DayWeather(latitude: Double, longitude: Double) async throws -> [String: FetchedWeatherData] {
+        // 1. Fetch Forecast Data (Atmospheric Conditions for 7 days)
+        let forecastUrlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&hourly=cloud_cover,wind_direction_10m,temperature_2m&forecast_days=7"
         guard let forecastUrl = URL(string: forecastUrlString) else {
             throw URLError(.badURL)
         }
@@ -20,57 +20,72 @@ public class WeatherService {
         let (forecastData, _) = try await URLSession.shared.data(from: forecastUrl)
         let forecastJSON = try JSONSerialization.jsonObject(with: forecastData) as? [String: Any]
         
-        // Parse cloud cover
-        let current = forecastJSON?["current"] as? [String: Any]
-        let cloudCover = current?["cloud_cover"] as? Double ?? 20.0
-        
-        // Parse hourly values for wind direction change and air temperature
         let hourly = forecastJSON?["hourly"] as? [String: Any]
+        let hourlyTime = hourly?["time"] as? [String] ?? []
+        let hourlyCloud = hourly?["cloud_cover"] as? [Double] ?? []
         let hourlyWind = hourly?["wind_direction_10m"] as? [Double] ?? []
         let hourlyAir = hourly?["temperature_2m"] as? [Double] ?? []
         
-        // Wind direction change over last 3 hours (using index 12 vs index 9)
-        var windDirectionChange = 10.0
-        if hourlyWind.count > 12 {
-            let change = abs(hourlyWind[12] - hourlyWind[9])
-            windDirectionChange = change > 180.0 ? 360.0 - change : change
-        }
-        
-        // Air temperature change over 24 hours (last index vs first index)
-        var surfaceTempDelta24h = 0.0
-        if hourlyAir.count >= 24 {
-            surfaceTempDelta24h = hourlyAir[hourlyAir.count - 1] - hourlyAir[0]
-        }
-        
-        // 2. Fetch Marine Data (Native Sea Surface Temperature & Swell Height)
-        let marineUrlString = "https://marine-api.open-meteo.com/v1/marine?latitude=\(latitude)&longitude=\(longitude)&current=sea_surface_temperature,wave_height&forecast_days=1"
-        var waterTemp = 20.0
-        var swellHeight = 0.2
+        // 2. Fetch Marine Data (Native Sea Surface Temperature & Swell Height for 7 days)
+        let marineUrlString = "https://marine-api.open-meteo.com/v1/marine?latitude=\(latitude)&longitude=\(longitude)&hourly=sea_surface_temperature,wave_height&forecast_days=7"
+        var hourlySst: [Double] = []
+        var hourlyWave: [Double] = []
         
         if let marineUrl = URL(string: marineUrlString) {
             do {
                 let (marineData, _) = try await URLSession.shared.data(from: marineUrl)
                 if let marineJSON = try JSONSerialization.jsonObject(with: marineData) as? [String: Any],
-                   let currentMarine = marineJSON["current"] as? [String: Any] {
-                    if let sst = currentMarine["sea_surface_temperature"] as? Double {
-                        waterTemp = sst
-                    }
-                    if let waveHeight = currentMarine["wave_height"] as? Double {
-                        swellHeight = waveHeight
-                    }
+                   let hourlyMarine = marineJSON["hourly"] as? [String: Any] {
+                    hourlySst = hourlyMarine["sea_surface_temperature"] as? [Double] ?? []
+                    hourlyWave = hourlyMarine["wave_height"] as? [Double] ?? []
                 }
             } catch {
-                // If inland or marine API fails (e.g. coordinates inland), fallback to neutral defaults
                 print("Marine API fetch failed or coordinates inland: \(error)")
             }
         }
         
-        return FetchedWeatherData(
-            waterTemp: waterTemp,
-            cloudCover: cloudCover,
-            windDirectionChange: windDirectionChange,
-            swellHeight: swellHeight,
-            surfaceTempDelta24h: surfaceTempDelta24h
-        )
+        var result: [String: FetchedWeatherData] = [:]
+        
+        // Group by day (0 to 6)
+        for day in 0..<7 {
+            let startIndex = day * 24
+            let endIndex = (day + 1) * 24
+            
+            guard hourlyTime.count > startIndex else { continue }
+            
+            // Get date string (first 10 chars of ISO string: "yyyy-MM-dd")
+            let dateStr = String(hourlyTime[startIndex].prefix(10))
+            
+            // Slice hourly values
+            let cloudSlice = hourlyCloud.count > endIndex ? Array(hourlyCloud[startIndex..<endIndex]) : []
+            let windSlice = hourlyWind.count > endIndex ? Array(hourlyWind[startIndex..<endIndex]) : []
+            let airSlice = hourlyAir.count > endIndex ? Array(hourlyAir[startIndex..<endIndex]) : []
+            let sstSlice = hourlySst.count > endIndex ? Array(hourlySst[startIndex..<endIndex]) : []
+            let waveSlice = hourlyWave.count > endIndex ? Array(hourlyWave[startIndex..<endIndex]) : []
+            
+            // Calculate averages / representatives
+            let avgCloud = cloudSlice.isEmpty ? 20.0 : cloudSlice.reduce(0.0, +) / Double(cloudSlice.count)
+            
+            // Wind direction change over last 3 hours of mid-day
+            var windChange = 10.0
+            if windSlice.count > 12 {
+                let change = abs(windSlice[12] - windSlice[9])
+                windChange = change > 180.0 ? 360.0 - change : change
+            }
+            
+            let tempDelta = airSlice.count >= 24 ? airSlice[23] - airSlice[0] : 0.0
+            let avgSst = sstSlice.isEmpty ? 20.0 : sstSlice.reduce(0.0, +) / Double(sstSlice.count)
+            let maxWave = waveSlice.isEmpty ? 0.2 : waveSlice.reduce(0.0, max)
+            
+            result[dateStr] = FetchedWeatherData(
+                waterTemp: avgSst,
+                cloudCover: avgCloud,
+                windDirectionChange: windChange,
+                swellHeight: maxWave,
+                surfaceTempDelta24h: tempDelta
+            )
+        }
+        
+        return result
     }
 }

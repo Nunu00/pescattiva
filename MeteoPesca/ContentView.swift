@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var waterTempCelsius: Double = 20.0
     @State private var isFetchingWeather: Bool = false
     @State private var weatherErrorMessage: String? = nil
+    @State private var weatherCache: [String: FetchedWeatherData] = [:]
     
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
@@ -53,13 +54,58 @@ struct ContentView: View {
         
         let astro = AstronomyEngine.calculateAstronomy(date: startOfDay, coordinate: coord)
         let tides = TideEngine.calculateDailyTides(date: startOfDay, coordinate: coord)
+        
+        let dateKey = cacheKeyFormatter.string(from: startOfDay)
+        var sst = 20.0
+        var cloud = 20.0
+        var wind = 0.0
+        var swell = 0.2
+        var delta = 0.0
+        
+        if let cached = weatherCache[dateKey] {
+            cloud = cached.cloudCover
+            wind = cached.windDirectionChange
+            swell = cached.swellHeight
+            delta = cached.surfaceTempDelta24h
+            sst = cached.waterTemp
+        } else {
+            let month = calendar.component(.month, from: startOfDay)
+            var seasonalWaterTemp = 20.0
+            switch month {
+            case 1, 2: seasonalWaterTemp = 13.0
+            case 3: seasonalWaterTemp = 14.0
+            case 4: seasonalWaterTemp = 16.0
+            case 5: seasonalWaterTemp = 18.0
+            case 6: seasonalWaterTemp = 22.0
+            case 7: seasonalWaterTemp = 25.0
+            case 8: seasonalWaterTemp = 26.0
+            case 9: seasonalWaterTemp = 24.0
+            case 10: seasonalWaterTemp = 21.0
+            case 11: seasonalWaterTemp = 18.0
+            case 12: seasonalWaterTemp = 15.0
+            default: seasonalWaterTemp = 20.0
+            }
+            
+            let today = Date()
+            let daysDifference = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: startOfDay).day ?? 0
+            let todayKey = cacheKeyFormatter.string(from: today)
+            let currentSst = weatherCache[todayKey]?.waterTemp ?? 20.0
+            
+            if daysDifference < -1 {
+                sst = seasonalWaterTemp
+            } else {
+                let transitionDays = Double(daysDifference - 7)
+                let blendFactor = min(1.0, max(0.0, transitionDays / 7.0))
+                sst = currentSst + (seasonalWaterTemp - currentSst) * blendFactor
+            }
+        }
+        
         let weatherFactor = WeatherFactor(
-            cloudCoverPercent: 0,
-            windDirectionChange: 0,
-            swellHeight: 0,
-            surfaceTempDelta24h: 0
+            cloudCoverPercent: cloud,
+            windDirectionChange: wind,
+            swellHeight: swell,
+            surfaceTempDelta24h: delta
         )
-        let temp = Double(waterTempCelsius)
         
         let forecastResult = RulesEngine.evaluateForecast(
             date: startOfDay,
@@ -73,7 +119,7 @@ struct ContentView: View {
             moonAge: astro.moonAge,
             tides: tides,
             weather: weatherFactor,
-            waterTempCelsius: temp
+            waterTempCelsius: sst
         )
         
         return forecastResult.dailyActivity
@@ -126,6 +172,7 @@ struct ContentView: View {
                                 .onChange(of: selectedLocation) { newLoc in
                                     customLatitude = String(format: "%.4f", newLoc.coordinate.latitude)
                                     customLongitude = String(format: "%.4f", newLoc.coordinate.longitude)
+                                    self.weatherCache = [:]
                                     calculateForecast()
                                     updateWeatherAutomatically()
                                 }
@@ -249,22 +296,31 @@ struct ContentView: View {
                                 
                                 ForEach(days, id: \.self) { date in
                                     let activity = activityForDate(date)
+                                    let isToday = Calendar.current.isDate(date, inSameDayAs: Date())
                                     let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
                                     
-                                    Text("\(Calendar.current.component(.day, from: date))")
-                                        .font(.footnote)
-                                        .fontWeight(isSelected ? .bold : .medium)
-                                        .foregroundColor(isSelected ? .black : .white)
-                                        .frame(height: 32)
-                                        .frame(maxWidth: .infinity)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(isSelected ? Color.white : colorForActivity(activity).opacity(0.25))
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(colorForActivity(activity), lineWidth: isSelected ? 2 : 1)
-                                        )
+                                    VStack(spacing: 2) {
+                                        Text("\(Calendar.current.component(.day, from: date))")
+                                            .font(.footnote)
+                                            .fontWeight(isSelected ? .bold : (isToday ? .bold : .medium))
+                                            .foregroundColor(isSelected ? .black : (isToday ? .teal : .white))
+                                        
+                                        if isToday {
+                                            Circle()
+                                                .fill(isSelected ? Color.black : Color.teal)
+                                                .frame(width: 4, height: 4)
+                                        }
+                                    }
+                                    .frame(height: 32)
+                                    .frame(maxWidth: .infinity)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(isSelected ? Color.white : colorForActivity(activity).opacity(0.25))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(isToday && !isSelected ? Color.teal : colorForActivity(activity), lineWidth: isSelected ? 2.5 : (isToday ? 2.0 : 1.0))
+                                    )
                                         .onTapGesture {
                                             selectedDate = date
                                             calculateForecast()
@@ -272,140 +328,6 @@ struct ContentView: View {
                                         }
                                 }
                             }
-                        }
-                        .padding()
-                        .background(Color.white.opacity(0.04))
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        )
-                        .padding(.horizontal)
-                        
-                        // 1b. Environmental Conditions Card
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                Text("Meteo & Parametri Costieri")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                Spacer()
-                                if isFetchingWeather {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .teal))
-                                } else {
-                                    Button(action: updateWeatherAutomatically) {
-                                        Image(systemName: "arrow.clockwise")
-                                            .foregroundColor(.teal)
-                                            .font(.subheadline)
-                                    }
-                                }
-                            }
-                            
-                            if let errorMsg = weatherErrorMessage {
-                                Text(errorMsg)
-                                    .font(.caption2)
-                                    .foregroundColor(.red.opacity(0.8))
-                            }
-                            
-                            VStack(spacing: 12) {
-                                // Water Temp
-                                HStack {
-                                    Image(systemName: "thermometer.medium")
-                                        .foregroundColor(.teal)
-                                        .frame(width: 20)
-                                    Text("Temp. Acqua")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text("\(Int(waterTempCelsius))°C")
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.teal)
-                                        Text(waterTempCelsius < 15 ? "Metabolismo ridotto (freddo)" : (waterTempCelsius > 25 ? "Letargici (caldo)" : "Condizione ottimale (Q10)"))
-                                            .font(.system(size: 9))
-                                            .foregroundColor(.white.opacity(0.5))
-                                    }
-                                }
-                                
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                // Cloud Cover
-                                HStack {
-                                    Image(systemName: "cloud.fill")
-                                        .foregroundColor(.cyan)
-                                        .frame(width: 20)
-                                    Text("Nuvolosità")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Text("\(Int(cloudCover))%")
-                                        .font(.subheadline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.cyan)
-                                }
-                                
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                // Wind Change
-                                HStack {
-                                    Image(systemName: "wind")
-                                        .foregroundColor(.orange)
-                                        .frame(width: 20)
-                                    Text("Variazione Direzione Vento")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Text("\(Int(windDirectionChange))°")
-                                        .font(.subheadline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.orange)
-                                }
-                                
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                // Swell Height
-                                HStack {
-                                    Image(systemName: "water.waves")
-                                        .foregroundColor(.blue)
-                                        .frame(width: 20)
-                                    Text("Altezza Onda (Swell)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Text(String(format: "%.1f m", swellHeight))
-                                        .font(.subheadline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.blue)
-                                }
-                                
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                // Surface Temp Delta
-                                HStack {
-                                    Image(systemName: "thermometer.snowflake")
-                                        .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
-                                        .frame(width: 20)
-                                    Text("Variazione Temp. Superficiale (24h)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    Spacer()
-                                    Text(String(format: "%+.1f°C", surfaceTempDelta24h))
-                                        .font(.subheadline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
-                                }
-                                
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                Text("* Rilevamenti costieri e satellitari aggiornati via Open-Meteo.")
-                                    .font(.caption2)
-                                    .italic()
-                                    .foregroundColor(.white.opacity(0.4))
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.05))
-                            .cornerRadius(12)
                         }
                         .padding()
                         .background(Color.white.opacity(0.04))
@@ -465,40 +387,6 @@ struct ContentView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
                                     .stroke(colorForActivity(forecast.dailyActivity).opacity(0.3), lineWidth: 1)
-                            )
-                            .padding(.horizontal)
-                            
-                            // 2b. Detailed Factor Breakdown Section
-                            let sumFactors = forecast.moonPhaseFactor + forecast.moonDistanceFactor + forecast.tideCoeffFactor + forecast.solunarOverlapFactor + forecast.weatherFactorVal + forecast.waterTempFactor
-                            let normMoonPhase = (forecast.moonPhaseFactor / sumFactors) * 100.0
-                            let normMoonDist = (forecast.moonDistanceFactor / sumFactors) * 100.0
-                            let normTide = (forecast.tideCoeffFactor / sumFactors) * 100.0
-                            let normOverlap = (forecast.solunarOverlapFactor / sumFactors) * 100.0
-                            let normWeather = (forecast.weatherFactorVal / sumFactors) * 100.0
-                            let normWaterTemp = (forecast.waterTempFactor / sumFactors) * 100.0
-                            
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Analisi dei Fattori Costieri & Lunari")
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .tracking(0.5)
-                                
-                                VStack(spacing: 8) {
-                                    FactorRow(name: "Fase Lunare (Novilunio/Plenilunio)", value: String(format: "%.1f%%", normMoonPhase), icon: "moon.stars.fill", color: .yellow)
-                                    FactorRow(name: "Gravità Luna (Apogeo/Perigeo)", value: String(format: "%.1f%%", normMoonDist), icon: "scalemass.fill", color: .purple)
-                                    FactorRow(name: "Coefficiente di Marea (Ampiezza)", value: String(format: "%.1f%%", normTide), icon: "water.waves", color: .blue)
-                                    FactorRow(name: "Allineamenti Solunari (Coincidenze)", value: String(format: "%.1f%%", normOverlap), icon: "sparkles", color: .orange)
-                                    FactorRow(name: "Fattori Meteo Compositi", value: String(format: "%.1f%%", normWeather), icon: "cloud.sun.fill", color: .cyan)
-                                    FactorRow(name: "Temperatura Acqua (Metabolismo Q10)", value: String(format: "%.1f%%", normWaterTemp), icon: "thermometer.medium", color: .teal)
-                                }
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.04))
-                            .cornerRadius(16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
                             )
                             .padding(.horizontal)
                             
@@ -625,7 +513,174 @@ struct ContentView: View {
                             .background(Color.white.opacity(0.04))
                             .cornerRadius(16)
                             .padding(.horizontal)
-                            // Timeline omitted as requested by user
+                            
+                            // 6. Environmental Conditions Card (Meteo & Parametri Costieri)
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack {
+                                    Text("Meteo & Parametri Costieri")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    if isFetchingWeather {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .teal))
+                                    } else {
+                                        Button(action: updateWeatherAutomatically) {
+                                            Image(systemName: "arrow.clockwise")
+                                                .foregroundColor(.teal)
+                                                .font(.subheadline)
+                                        }
+                                    }
+                                }
+                                
+                                if let errorMsg = weatherErrorMessage {
+                                    Text(errorMsg)
+                                        .font(.caption2)
+                                        .foregroundColor(errorMsg.contains("offline") ? .red : .orange)
+                                }
+                                
+                                VStack(spacing: 12) {
+                                    // Water Temp
+                                    HStack {
+                                        Image(systemName: "thermometer.medium")
+                                            .foregroundColor(.teal)
+                                            .frame(width: 20)
+                                        Text("Temp. Acqua")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text("\(Int(waterTempCelsius))°C")
+                                                .font(.subheadline)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.teal)
+                                            Text(waterTempCelsius < 15 ? "Metabolismo ridotto (freddo)" : (waterTempCelsius > 25 ? "Letargici (caldo)" : "Condizione ottimale (Q10)"))
+                                                .font(.system(size: 9))
+                                                .foregroundColor(.white.opacity(0.5))
+                                        }
+                                    }
+                                    
+                                    Divider().background(Color.white.opacity(0.1))
+                                    
+                                    // Cloud Cover
+                                    HStack {
+                                        Image(systemName: "cloud.fill")
+                                            .foregroundColor(.cyan)
+                                            .frame(width: 20)
+                                        Text("Nuvolosità")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text("\(Int(cloudCover))%")
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
+                                    }
+                                    
+                                    Divider().background(Color.white.opacity(0.1))
+                                    
+                                    // Wind Change
+                                    HStack {
+                                        Image(systemName: "wind")
+                                            .foregroundColor(.orange)
+                                            .frame(width: 20)
+                                        Text("Variazione Direzione Vento")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text("\(Int(windDirectionChange))°")
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.orange)
+                                    }
+                                    
+                                    Divider().background(Color.white.opacity(0.1))
+                                    
+                                    // Swell Height
+                                    HStack {
+                                        Image(systemName: "water.waves")
+                                            .foregroundColor(.blue)
+                                            .frame(width: 20)
+                                        Text("Altezza Onda (Swell)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text(String(format: "%.1f m", swellHeight))
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.blue)
+                                    }
+                                    
+                                    Divider().background(Color.white.opacity(0.1))
+                                    
+                                    // Surface Temp Delta
+                                    HStack {
+                                        Image(systemName: "thermometer.snowflake")
+                                            .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
+                                            .frame(width: 20)
+                                        Text("Variazione Temp. Superficiale (24h)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white.opacity(0.8))
+                                        Spacer()
+                                        Text(String(format: "%+.1f°C", surfaceTempDelta24h))
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(surfaceTempDelta24h < -1.5 ? .green : .white)
+                                    }
+                                    
+                                    Divider().background(Color.white.opacity(0.1))
+                                    
+                                    Text("* Rilevamenti costieri e satellitari aggiornati via Open-Meteo.")
+                                        .font(.caption2)
+                                        .italic()
+                                        .foregroundColor(.white.opacity(0.4))
+                                }
+                                .padding()
+                                .background(Color.white.opacity(0.05))
+                                .cornerRadius(12)
+                            }
+                            .padding()
+                            .background(Color.white.opacity(0.04))
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                            .padding(.horizontal)
+                            
+                            // 7. Detailed Factor Breakdown Section
+                            let sumFactors = forecast.moonPhaseFactor + forecast.moonDistanceFactor + forecast.tideCoeffFactor + forecast.solunarOverlapFactor + forecast.weatherFactorVal + forecast.waterTempFactor
+                            let normMoonPhase = (forecast.moonPhaseFactor / sumFactors) * 100.0
+                            let normMoonDist = (forecast.moonDistanceFactor / sumFactors) * 100.0
+                            let normTide = (forecast.tideCoeffFactor / sumFactors) * 100.0
+                            let normOverlap = (forecast.solunarOverlapFactor / sumFactors) * 100.0
+                            let normWeather = (forecast.weatherFactorVal / sumFactors) * 100.0
+                            let normWaterTemp = (forecast.waterTempFactor / sumFactors) * 100.0
+                            
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Analisi dei Fattori Costieri & Lunari")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .tracking(0.5)
+                                
+                                VStack(spacing: 8) {
+                                    FactorRow(name: "Fase Lunare (Novilunio/Plenilunio)", value: String(format: "%.1f%%", normMoonPhase), icon: "moon.stars.fill", color: .yellow)
+                                    FactorRow(name: "Gravità Luna (Apogeo/Perigeo)", value: String(format: "%.1f%%", normMoonDist), icon: "scalemass.fill", color: .purple)
+                                    FactorRow(name: "Coefficiente di Marea (Ampiezza)", value: String(format: "%.1f%%", normTide), icon: "water.waves", color: .blue)
+                                    FactorRow(name: "Allineamenti Solunari (Coincidenze)", value: String(format: "%.1f%%", normOverlap), icon: "sparkles", color: .orange)
+                                    FactorRow(name: "Fattori Meteo Compositi", value: String(format: "%.1f%%", normWeather), icon: "cloud.sun.fill", color: .cyan)
+                                    FactorRow(name: "Temperatura Acqua (Metabolismo Q10)", value: String(format: "%.1f%%", normWaterTemp), icon: "thermometer.medium", color: .teal)
+                                }
+                            }
+                            .padding()
+                            .background(Color.white.opacity(0.04))
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                            .padding(.horizontal)
                         }
                         
                         Spacer(minLength: 40)
@@ -667,6 +722,7 @@ struct ContentView: View {
         if let lat = Double(customLatitude), let lon = Double(customLongitude) {
             let customLoc = Location(name: "Coordinate Manuali", latitude: lat, longitude: lon)
             selectedLocation = customLoc
+            self.weatherCache = [:]
             calculateForecast()
             updateWeatherAutomatically()
         }
@@ -710,66 +766,105 @@ struct ContentView: View {
     }
     
     private func updateWeatherAutomatically() {
+        let dateKey = cacheKeyFormatter.string(from: selectedDate)
+        if weatherCache[dateKey] != nil || weatherCache.count > 0 {
+            // Apply parameters for selected date from cache or blend climatology
+            applyWeatherForSelectedDate()
+        } else {
+            // Fetch 7-day forecast cache
+            fetch7DayWeatherCache()
+        }
+    }
+    
+    private func fetch7DayWeatherCache() {
         let coord = selectedLocation.coordinate
         isFetchingWeather = true
         weatherErrorMessage = nil
         
+        Task {
+            do {
+                let cache = try await WeatherService.fetch7DayWeather(latitude: coord.latitude, longitude: coord.longitude)
+                await MainActor.run {
+                    self.weatherCache = cache
+                    self.isFetchingWeather = false
+                    self.applyWeatherForSelectedDate()
+                }
+            } catch {
+                await MainActor.run {
+                    self.weatherErrorMessage = "Meteo offline: impossibile caricare le previsioni."
+                    self.isFetchingWeather = false
+                    self.applyWeatherForSelectedDate()
+                }
+            }
+        }
+    }
+    
+    private func applyWeatherForSelectedDate() {
+        let dateKey = cacheKeyFormatter.string(from: selectedDate)
+        
         let calendar = Calendar.current
         let today = Date()
-        let daysDifference = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: calendar.startOfDay(for: selectedDate)).day ?? 0
+        let startOfToday = calendar.startOfDay(for: today)
+        let startOfSelected = calendar.startOfDay(for: selectedDate)
+        let daysDifference = calendar.dateComponents([.day], from: startOfToday, to: startOfSelected).day ?? 0
         
-        if daysDifference < -1 || daysDifference > 7 {
-            // For distant dates (past or future), fall back to climatological averages for the month
-            let month = calendar.component(.month, from: selectedDate)
-            var seasonalWaterTemp = 20.0
-            
-            // Typical Mediterranean coastal sea temperatures by month:
-            // Jan-Feb: 13, Mar: 14, Apr: 16, May: 18, Jun: 22, Jul: 25, Aug: 26, Sep: 24, Oct: 21, Nov: 18, Dec: 15
-            switch month {
-            case 1, 2: seasonalWaterTemp = 13.0
-            case 3: seasonalWaterTemp = 14.0
-            case 4: seasonalWaterTemp = 16.0
-            case 5: seasonalWaterTemp = 18.0
-            case 6: seasonalWaterTemp = 22.0
-            case 7: seasonalWaterTemp = 25.0
-            case 8: seasonalWaterTemp = 26.0
-            case 9: seasonalWaterTemp = 24.0
-            case 10: seasonalWaterTemp = 21.0
-            case 11: seasonalWaterTemp = 18.0
-            case 12: seasonalWaterTemp = 15.0
-            default: seasonalWaterTemp = 20.0
-            }
-            
+        // 1. Get Climatological Temperature for the selected month
+        let month = calendar.component(.month, from: selectedDate)
+        var seasonalWaterTemp = 20.0
+        switch month {
+        case 1, 2: seasonalWaterTemp = 13.0
+        case 3: seasonalWaterTemp = 14.0
+        case 4: seasonalWaterTemp = 16.0
+        case 5: seasonalWaterTemp = 18.0
+        case 6: seasonalWaterTemp = 22.0
+        case 7: seasonalWaterTemp = 25.0
+        case 8: seasonalWaterTemp = 26.0
+        case 9: seasonalWaterTemp = 24.0
+        case 10: seasonalWaterTemp = 21.0
+        case 11: seasonalWaterTemp = 18.0
+        case 12: seasonalWaterTemp = 15.0
+        default: seasonalWaterTemp = 20.0
+        }
+        
+        // 2. Fetch today's temperature (or the latest available in forecast) to blend from
+        let todayKey = cacheKeyFormatter.string(from: today)
+        let currentSst = weatherCache[todayKey]?.waterTemp ?? 20.0
+        
+        if let cached = weatherCache[dateKey] {
+            // Selected date is within the 7-day forecast!
+            self.cloudCover = cached.cloudCover
+            self.windDirectionChange = cached.windDirectionChange
+            self.swellHeight = cached.swellHeight
+            self.surfaceTempDelta24h = cached.surfaceTempDelta24h
+            self.waterTempCelsius = cached.waterTemp
+            self.weatherErrorMessage = nil
+        } else {
+            // Distant date (past or future)!
             self.cloudCover = 20.0
             self.windDirectionChange = 0.0
             self.swellHeight = 0.2
             self.surfaceTempDelta24h = 0.0
-            self.waterTempCelsius = seasonalWaterTemp
-            self.weatherErrorMessage = "* Mostrati parametri medi climatologici del mese (meteo reale non disponibile)."
-            self.isFetchingWeather = false
-            self.calculateForecast()
-            return
-        }
-        
-        Task {
-            do {
-                let fetched = try await WeatherService.fetchWeather(latitude: coord.latitude, longitude: coord.longitude)
-                await MainActor.run {
-                    self.cloudCover = fetched.cloudCover
-                    self.windDirectionChange = fetched.windDirectionChange
-                    self.swellHeight = fetched.swellHeight
-                    self.surfaceTempDelta24h = fetched.surfaceTempDelta24h
-                    self.waterTempCelsius = fetched.waterTemp
-                    self.isFetchingWeather = false
-                    self.calculateForecast()
-                }
-            } catch {
-                await MainActor.run {
-                    self.weatherErrorMessage = "Meteo offline: impossibile aggiornare automaticamente."
-                    self.isFetchingWeather = false
+            
+            if daysDifference < -1 {
+                // Past date: just use climatological water temp
+                self.waterTempCelsius = seasonalWaterTemp
+                self.weatherErrorMessage = "* Mostrati parametri medi climatologici storici (data passata)."
+            } else {
+                // Future date beyond 7 days: smoothly blend from last forecast (currentSst) to climatological average (seasonalWaterTemp) over a 7-day transition period!
+                let transitionDays = Double(daysDifference - 7)
+                let blendFactor = min(1.0, max(0.0, transitionDays / 7.0)) // blends from 0.0 (at day 7) to 1.0 (at day 14)
+                let blendedTemp = currentSst + (seasonalWaterTemp - currentSst) * blendFactor
+                
+                self.waterTempCelsius = blendedTemp
+                if blendFactor < 1.0 {
+                    self.weatherErrorMessage = String(format: "* Transizione termica: %.1f°C sfumata verso la media climatologica.", blendedTemp)
+                } else {
+                    self.weatherErrorMessage = "* Mostrati parametri medi climatologici storici (data lontana)."
                 }
             }
         }
+        
+        self.calculateForecast()
     }
     
     private func timeString(_ date: Date?) -> String {
