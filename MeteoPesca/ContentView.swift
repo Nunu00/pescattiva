@@ -883,7 +883,7 @@ struct ContentView: View {
             } else if isForecastAvailable {
                 colorForActivity(activity).opacity(0.8)
             } else {
-                colorForActivity(activity).saturation(0.4).opacity(0.18)
+                colorForActivity(activity).saturation(0.45).opacity(0.38)
             }
         }
         
