@@ -11,8 +11,8 @@ public struct FetchedWeatherData {
 public class WeatherService {
     
     public static func fetchWeather(latitude: Double, longitude: Double) async throws -> FetchedWeatherData {
-        // 1. Fetch Forecast Data
-        let forecastUrlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=cloud_cover,wind_direction_10m&hourly=wind_direction_10m,temperature_2m,soil_temperature_0cm&cell_selection=sea&forecast_days=1"
+        // 1. Fetch Forecast Data (Atmospheric Conditions)
+        let forecastUrlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=cloud_cover,wind_direction_10m&hourly=wind_direction_10m,temperature_2m&forecast_days=1"
         guard let forecastUrl = URL(string: forecastUrlString) else {
             throw URLError(.badURL)
         }
@@ -24,14 +24,10 @@ public class WeatherService {
         let current = forecastJSON?["current"] as? [String: Any]
         let cloudCover = current?["cloud_cover"] as? Double ?? 20.0
         
-        // Parse hourly values for wind direction change and water temp
+        // Parse hourly values for wind direction change and air temperature
         let hourly = forecastJSON?["hourly"] as? [String: Any]
         let hourlyWind = hourly?["wind_direction_10m"] as? [Double] ?? []
-        let hourlySoil = hourly?["soil_temperature_0cm"] as? [Double] ?? []
         let hourlyAir = hourly?["temperature_2m"] as? [Double] ?? []
-        
-        // Water temperature from soil_temperature_0cm at index 12 (midday approx)
-        let waterTemp = hourlySoil.count > 12 ? hourlySoil[12] : 20.0
         
         // Wind direction change over last 3 hours (using index 12 vs index 9)
         var windDirectionChange = 10.0
@@ -46,19 +42,25 @@ public class WeatherService {
             surfaceTempDelta24h = hourlyAir[hourlyAir.count - 1] - hourlyAir[0]
         }
         
-        // 2. Fetch Marine Data for Swell Height
-        let marineUrlString = "https://marine-api.open-meteo.com/v1/marine?latitude=\(latitude)&longitude=\(longitude)&current=wave_height"
+        // 2. Fetch Marine Data (Native Sea Surface Temperature & Swell Height)
+        let marineUrlString = "https://marine-api.open-meteo.com/v1/marine?latitude=\(latitude)&longitude=\(longitude)&current=sea_surface_temperature,wave_height&forecast_days=1"
+        var waterTemp = 20.0
         var swellHeight = 0.2
+        
         if let marineUrl = URL(string: marineUrlString) {
             do {
                 let (marineData, _) = try await URLSession.shared.data(from: marineUrl)
                 if let marineJSON = try JSONSerialization.jsonObject(with: marineData) as? [String: Any],
-                   let currentMarine = marineJSON["current"] as? [String: Any],
-                   let waveHeight = currentMarine["wave_height"] as? Double {
-                    swellHeight = waveHeight
+                   let currentMarine = marineJSON["current"] as? [String: Any] {
+                    if let sst = currentMarine["sea_surface_temperature"] as? Double {
+                        waterTemp = sst
+                    }
+                    if let waveHeight = currentMarine["wave_height"] as? Double {
+                        swellHeight = waveHeight
+                    }
                 }
             } catch {
-                // If inland or marine API fails, ignore and use default
+                // If inland or marine API fails (e.g. coordinates inland), fallback to neutral defaults
                 print("Marine API fetch failed or coordinates inland: \(error)")
             }
         }

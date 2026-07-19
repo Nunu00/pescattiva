@@ -240,17 +240,25 @@ public class RulesEngine {
         
         guard let mHigh = minDiffHigh, let mLow = minDiffLow else { return 1.0 }
         
-        // Picco di attività: da 1h prima (-60m) a 30m dopo (+30m) l'alta marea
+        // 1. Peak window around High Tide (1h before to 30 min after)
         if mHigh >= -60.0 && mHigh <= 30.0 {
             let distanceFromPeak = abs(mHigh + 15.0)
             return 1.5 - (distanceFromPeak / 60.0) * 0.3
         }
         
-        // Fase di stanca (slack tide): minima attività, poca corrente
-        if abs(mHigh) > 150.0 && abs(mLow) > 150.0 {
+        // 2. Slack water around Low Tide (within 30 minutes of low tide)
+        if abs(mLow) <= 30.0 {
             return 0.7
         }
         
-        return 1.0
+        // 3. Determine if current phase is rising (flood) or falling (ebb)
+        // If closest high tide is in the future and closest low tide is in the past, it's a rising tide.
+        let isRising = mHigh > 0 && mLow < 0
+        
+        if isRising {
+            return 1.2 // Flood tide bonus (active movement/current bringing food)
+        } else {
+            return 0.9 // Ebb tide phase (activity subsiding)
+        }
     }
 }
