@@ -147,40 +147,44 @@ public class RulesEngine {
         
         // 5. Calculate Daily Activity Rating using our calibrated solunar and tide rules
         let coeff = TideEngine.calculateTideCoefficient(at: date, coordinate: location.coordinate)
-        
-        let dailyLevel: ActivityLevel
-        let distToQuarter = min(abs(moonAge - 7.38), abs(moonAge - 22.15))
-        let isQuarter = distToQuarter <= 0.5
-        
-        // Count enhanced periods
         let enhancedCount = periods.filter { $0.isEnhanced }.count
         
-        // Query moon distance for Apogee week penalty
         let ast = AstronomyEngine.calculateAstronomy(date: date, coordinate: location.coordinate)
         let moonDistance = ast.moonDistance
         
-        if isQuarter {
+        // --- Principled Physics-Based Multiplicative Model ---
+        // 1. Moon Phase Factor (0.0 to 1.0)
+        // Cosine squared model: peaks at New Moon (age=0/29.53) and Full Moon (age=14.77), troughs at Quarters
+        let baseP = 0.10
+        let angle = 2.0 * Double.pi * moonAge / 29.53059
+        let fPhase = baseP + (1.0 - baseP) * pow(cos(angle), 2.0)
+        
+        // 2. Moon Distance Factor (using inverse-cube relative gravitational tidal force)
+        // Normalised relative to mean distance 384,400 km
+        let fDist = pow(384400.0 / moonDistance, 3.0)
+        
+        // 3. Tide range/coefficient Factor (0.0 to 1.0)
+        let baseC = 0.30
+        let fCoeff = baseC + (1.0 - baseC) * (Double(coeff) - 20.0) / 100.0
+        
+        // 4. Overlaps/Solunar peak alignment Factor (1.0 to 1.6)
+        let wO = 0.60
+        let fOverlap = 1.0 + wO * Double(enhancedCount)
+        
+        // Combine multiplicatively
+        let score = fPhase * fDist * fCoeff * fOverlap
+        
+        // Map continuous score to daily activity level using optimized thresholds:
+        // T1 = 0.166, T2 = 0.416, T3 = 1.288
+        let dailyLevel: ActivityLevel
+        if score < 0.166 {
             dailyLevel = .bassa
-        } else if coeff < 38.0 {
-            dailyLevel = .bassa
+        } else if score < 0.416 {
+            dailyLevel = .media
+        } else if score < 1.288 {
+            dailyLevel = .alta
         } else {
-            if enhancedCount >= 2 {
-                dailyLevel = .moltoAlta // 3 fish
-            } else if enhancedCount == 1 {
-                if moonDistance > 403000.0 && coeff < 65.0 {
-                    dailyLevel = .media // 1 fish
-                } else {
-                    dailyLevel = .alta // 2 fish
-                }
-            } else { // enhancedCount == 0
-                if coeff >= 68.0 {
-                    dailyLevel = .alta // 2 fish
-                } else if moonDistance > 403000.0 {
-                    dailyLevel = .bassa // 0 fish
-                } else {
-                    dailyLevel = .media // 1 fish
-                }
-            }
+            dailyLevel = .moltoAlta
         }
         
         // 7. Get Moon illumination for display

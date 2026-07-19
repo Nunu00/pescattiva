@@ -5,13 +5,13 @@ public class TideEngine {
     // Representative tide gauge stations with M2, S2, N2, K1, O1 constituents
     // amplitudes (in meters) and phases (in degrees) calibrated for the Mediterranean
     public static let stations: [Location] = [
-        Location(name: "Sibari (Ionio)", latitude: 39.73, longitude: 16.48),
-        Location(name: "Crotone (Ionio)", latitude: 39.08, longitude: 17.13),
-        Location(name: "Taranto (Ionio)", latitude: 40.48, longitude: 17.22),
-        Location(name: "Reggio Calabria (Stretto)", latitude: 38.11, longitude: 15.65),
-        Location(name: "Salerno (Tirreno)", latitude: 40.68, longitude: 14.75),
-        Location(name: "Bari (Adriatico)", latitude: 41.13, longitude: 16.87),
-        Location(name: "Palermo (Tirreno)", latitude: 38.13, longitude: 13.37)
+        Location(name: "Sibari (Ionio)", latitude: 39.73, longitude: 16.48, tideLagDays: 1.5),
+        Location(name: "Crotone (Ionio)", latitude: 39.08, longitude: 17.13, tideLagDays: 1.5),
+        Location(name: "Taranto (Ionio)", latitude: 40.48, longitude: 17.22, tideLagDays: 1.5),
+        Location(name: "Reggio Calabria (Stretto)", latitude: 38.11, longitude: 15.65, tideLagDays: 1.2),
+        Location(name: "Salerno (Tirreno)", latitude: 40.68, longitude: 14.75, tideLagDays: 1.3),
+        Location(name: "Bari (Adriatico)", latitude: 41.13, longitude: 16.87, tideLagDays: 1.8),
+        Location(name: "Palermo (Tirreno)", latitude: 38.13, longitude: 13.37, tideLagDays: 1.2)
     ]
     
     // Constituent speed in degrees per hour
@@ -97,7 +97,9 @@ public class TideEngine {
     /// Calculates the tide coefficient (ranges from 20 to 120) based on lagged moon phase & distance.
     /// Incorporates the 1.5-day astronomical lag (age of the tide).
     public static func calculateTideCoefficient(at date: Date, coordinate: Coordinate) -> Double {
-        let laggedDate = date.addingTimeInterval(-129600) // 1.5 days lag
+        let station = findNearestStation(to: coordinate)
+        let lagSeconds = station.tideLagDays * 24.0 * 3600.0
+        let laggedDate = date.addingTimeInterval(-lagSeconds)
         let ast = AstronomyEngine.calculateAstronomy(date: laggedDate, coordinate: coordinate)
         
         // Base coefficient: 70.0 + 30.0 * cos(4.0 * .pi * (laggedAge / 29.53059))

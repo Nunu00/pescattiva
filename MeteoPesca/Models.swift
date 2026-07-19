@@ -16,10 +16,12 @@ public struct Location: Hashable, Identifiable, Codable {
     public var id: UUID = UUID()
     public var name: String
     public var coordinate: Coordinate
+    public var tideLagDays: Double
     
-    public init(name: String, latitude: Double, longitude: Double) {
+    public init(name: String, latitude: Double, longitude: Double, tideLagDays: Double = 1.5) {
         self.name = name
         self.coordinate = Coordinate(latitude: latitude, longitude: longitude, name: name)
+        self.tideLagDays = tideLagDays
     }
 }
 
