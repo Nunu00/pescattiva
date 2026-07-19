@@ -924,51 +924,54 @@ struct ContentView: View {
                 .background(Color.white.opacity(0.1))
                 .padding(.vertical, 4)
             
-            Text("LEGENDA CALENDARIO")
-                .font(.system(size: 9))
-                .fontWeight(.bold)
-                .foregroundColor(.white.opacity(0.5))
-                .tracking(1)
-            
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Color.teal.opacity(0.8)
-                            .frame(width: 12, height: 12)
-                            .cornerRadius(3)
-                        Text("Previsioni Reali (Saturazione max)").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Color.teal.saturation(0.4).opacity(0.18)
-                            .frame(width: 12, height: 12)
-                            .cornerRadius(3)
-                        Text("Stima Climatologica (Trasparente)").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(Color.teal)
-                            .frame(width: 6, height: 6)
-                        Text("Oggi (Giorno corrente)").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
-                    }
+            // Row 1: Previsioni Reali, Stima Climatologica, Oggi
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    Color.teal.opacity(0.8)
+                        .frame(width: 12, height: 12)
+                        .cornerRadius(3)
+                    Text("Previsioni Reali")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.7))
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Efficacia Pesca:").font(.system(size: 9)).foregroundColor(.white.opacity(0.5))
-                    
-                    HStack(spacing: 6) {
-                        ForEach(ActivityLevel.allCases, id: \.self) { level in
-                            HStack(spacing: 2) {
-                                Circle()
-                                    .fill(colorForActivity(level))
-                                    .frame(width: 6, height: 6)
-                                Text(level.rawValue).font(.system(size: 8)).foregroundColor(.white.opacity(0.7))
-                            }
-                        }
+                HStack(spacing: 4) {
+                    Color.teal.saturation(0.4).opacity(0.18)
+                        .frame(width: 12, height: 12)
+                        .cornerRadius(3)
+                    Text("Stima Climatologica")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.teal)
+                        .frame(width: 6, height: 6)
+                    Text("Oggi")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            
+            // Row 2: Efficacia Pesca colors horizontally without wrapping
+            HStack(spacing: 6) {
+                Text("Efficacia Pesca:")
+                    .font(.system(size: 9))
+                    .foregroundColor(.white.opacity(0.5))
+                
+                ForEach(ActivityLevel.allCases, id: \.self) { level in
+                    HStack(spacing: 2) {
+                        Circle()
+                            .fill(colorForActivity(level))
+                            .frame(width: 6, height: 6)
+                        Text(level.rawValue)
+                            .font(.system(size: 8))
+                            .foregroundColor(.white.opacity(0.7))
                     }
                 }
             }
+            .padding(.top, 2)
         }
     }
     
