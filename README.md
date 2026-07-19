@@ -1,21 +1,26 @@
-# MeteoPesca iOS Application
+# PescAttiva iOS Application
 
 Un'applicazione iOS nativa scritta in Swift e SwiftUI che calcola in modo **completamente offline** (senza alcuna chiave API a pagamento) le previsioni di pesca basandosi su maree armoniche locali, effemeridi del sole/luna e teoria solunare di John Alden Knight.
 
 L'applicazione è progettata per essere compilata automaticamente tramite **GitHub Actions** in un file `.ipa` non firmato, pronto per essere installato su iPhone tramite **SideStore** (o AltStore/TrollStore), senza bisogno di un Mac fisico.
 
-## Funzionalità principali
+---
 
-1. **Previsioni Astronomiche Offiline**: Calcolo esatto di alba/tramonto del Sole, alba/tramonto della Luna, transito lunare (Luna al meridiano) e antitransito lunare (Luna al nadir) tramite la libreria **SwiftAA** (algoritmi di Jean Meeus).
-2. **Calcolatore Maree Offline**: Un motore armonico in Swift che modella l'altezza delle maree combinando i 5 costituenti principali (M2, S2, N2, K1, O1) per i porti italiani (default Sibari, Crotone, Reggio Calabria, Salerno, ecc.), trovando l'ora esatta di alte/basse maree giornaliere.
-3. **Periodi Solunari**: Calcolo automatico dei periodi Maggiori (transiti ±1h) e Minori (sorgere/tramonto luna ±30m) con marcatura dei "picchi potenziati" se coincidono con alba o tramonto del sole.
-4. **Algoritmo Attività Pesci**: Regole che combinano l'escursione di marea con i bonus solunari e lunari per determinare l'indice di attività pesci orario e giornaliero (Bassa/Media/Alta/Molto Alta).
-5. **UI SwiftUI Premium**: Visualizzazione a timeline oraria, dettagli della Luna con disegno delle fasi lunari ed andamento delle maree disegnato su grafico interattivo.
+## ⚙️ Funzionalità principali
 
-## Come installare l'app su iPhone
+1. **Previsioni Astronomiche Offline**: Calcolo esatto di alba/tramonto del Sole, alba/tramonto della Luna, transito lunare (Luna al meridiano) e antitransito lunare (Luna al nadir) tramite la libreria **SwiftAA** (algoritmi di Jean Meeus).
+2. **Calcolatore Maree Offline**: Un motore armonico in Swift che modella l'altezza delle maree combinando i 5 costituenti principali ($M_2, S_2, N_2, K_1, O_1$) per i porti italiani (Sibari, Crotone, Taranto, Salerno, Bari, ecc.), trovando l'ora esatta di alte/basse maree giornaliere e calcolando il **Coefficiente di Marea** (da 20 a 120) compensato con la distanza Terra-Luna.
+3. **Periodi Solunari**: Calcolo automatico dei periodi Maggiori (transiti $\pm 1\text{h}$) e Minori (sorgere/tramonto luna $\pm 30\text{m}$) con marcatura dei "picchi potenziati" se coincidono con alba o tramonto del sole.
+4. **Algoritmo Attività Pesci (Rules Engine)**: Regole che integrano la velocità della corrente di marea sinusoidale normalizzata per l'escursione di sizigia del porto, i fattori lunari e le previsioni meteo marine (Open-Meteo) per ricavare un punteggio giornaliero ed orario dell'attività pesci (Bassa, Moderata, Buona, Alta, Molto Alta).
+5. **Previsioni SST ad "Anomalia Persistente"**: Integrazione delle temperature marine reali e meteorologiche con decay esponenziale dell'anomalia termica basato su costanti di decorrelazione stagionale per le query di date a lungo termine oltre l'orizzonte di previsione standard.
+6. **Interfaccia Utente a Calendario**: Visualizzazione mensile con colorazione ad alta saturazione per le previsioni reali a 7 giorni e celle semi-trasparenti per le stime a lungo termine, corredata da timeline oraria ed andamento grafico delle maree.
+
+---
+
+## 📲 Come installare l'app su iPhone
 
 ### 1. Clona il Repository e attiva il Workflow GitHub
-1. Carica questo codice sul tuo repository GitHub personale.
+1. Carica questo codice sul tuo repository GitHub personale (`https://github.com/Nunu00/pescattiva`).
 2. Vai sulla scheda **Actions** del tuo repository su GitHub.
 3. Seleziona il workflow **Build Unsigned IPA** a sinistra e clicca su **Run workflow** (oppure fai un push sulla branch `main` per farlo partire automaticamente).
 4. Attendi il completamento della compilazione (circa 3-4 minuti, dato che scarica e compila `SwiftAA` e le sue dipendenze C++).
@@ -29,10 +34,12 @@ L'applicazione è progettata per essere compilata automaticamente tramite **GitH
 2. Apri l'app **SideStore** sul tuo iPhone.
 3. Vai nella scheda **My Apps** e tocca il tasto **+** in alto a sinistra.
 4. Seleziona il file `MeteoPesca.ipa` che hai scaricato ed estratto.
-5. Inserisci le credenziali del tuo ID Apple gratuito quando richiesto (la firma avviene localmente sul tuo iPhone usando una VPN locale di SideStore, i dati non vengono trasmessi a terzi).
+5. Inserisci le credenziali del tuo ID Apple gratuito quando richiesto (la firma avviene localmente sul tuo iPhone usando una VPN locale di SideStore, i dati non vengono trasmessi a Apple).
 6. L'app verrà installata e sarà visibile nella schermata Home del tuo iPhone. Sarà necessario aggiornarla (refresh) una volta alla settimana tramite SideStore sotto la stessa rete Wi-Fi.
 
-## Struttura del Progetto
+---
+
+## 📂 Struttura del Progetto
 
 - `MeteoPesca/Models.swift`: Modelli dati condivisi per maree, solunare ed intervalli di attività.
 - `MeteoPesca/AstronomyEngine.swift`: Motore che esegue i calcoli solari e lunari Meeus tramite `SwiftAA`.
