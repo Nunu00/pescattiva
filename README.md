@@ -28,14 +28,7 @@ L'applicazione è progettata per essere compilata automaticamente tramite **GitH
 6. Estrai il file `.zip` sul tuo computer o direttamente sul tuo iPhone per ottenere il file `MeteoPesca.ipa`.
 
 ### 2. Installazione tramite SideStore (Senza Mac)
-[SideStore](https://sidestore.io/) è una piattaforma che consente di firmare e installare app sideloaded sul tuo iPhone utilizzando il tuo ID Apple gratuito direttamente dal dispositivo via Wi-Fi.
-
-1. Installa SideStore sul tuo iPhone seguendo la guida ufficiale su [sidestore.io](https://sidestore.io/).
-2. Apri l'app **SideStore** sul tuo iPhone.
-3. Vai nella scheda **My Apps** e tocca il tasto **+** in alto a sinistra.
-4. Seleziona il file `MeteoPesca.ipa` che hai scaricato ed estratto.
-5. Inserisci le credenziali del tuo ID Apple gratuito quando richiesto (la firma avviene localmente sul tuo iPhone usando una VPN locale di SideStore, i dati non vengono trasmessi a Apple).
-6. L'app verrà installata e sarà visibile nella schermata Home del tuo iPhone. Sarà necessario aggiornarla (refresh) una volta alla settimana tramite SideStore sotto la stessa rete Wi-Fi.
+Segui le varie guide presenti online.
 
 ---
 
