@@ -47,6 +47,61 @@ class MainActivity : ComponentActivity() {
 // Global cache to prevent UI lags
 private val activityCache = mutableMapOf<String, ActivityLevel>()
 
+private fun waterTempForDate(
+    date: Date,
+    weatherCache: Map<String, FetchedWeatherData>
+): Pair<Double, String?> {
+    val cal = Calendar.getInstance().apply { time = date }
+    val dateKey = String.format("%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+
+    val cached = weatherCache[dateKey]
+    if (cached != null) {
+        return Pair(cached.waterTemp, null)
+    }
+
+    val today = Date()
+    val diffDays = ((date.time - today.time) / 86400000).toInt()
+    val seasonalWaterTemp = climatologicalMean(date)
+
+    return when {
+        diffDays < -1 -> {
+            Pair(seasonalWaterTemp, "* Mostrati parametri medi climatologici storici (data passata).")
+        }
+        diffDays > 7 -> {
+            // Anomaly Persistence Forecast with exponential decay
+            val todayCal = Calendar.getInstance().apply { time = today }
+            val todayKey = String.format("%04d-%02d-%02d", todayCal.get(Calendar.YEAR), todayCal.get(Calendar.MONTH) + 1, todayCal.get(Calendar.DAY_OF_MONTH))
+            val currentSst = weatherCache[todayKey]?.waterTemp ?: 20.0
+
+            val day7Cal = Calendar.getInstance().apply {
+                time = today
+                add(Calendar.DAY_OF_MONTH, 7)
+            }
+            val day7Key = String.format("%04d-%02d-%02d", day7Cal.get(Calendar.YEAR), day7Cal.get(Calendar.MONTH) + 1, day7Cal.get(Calendar.DAY_OF_MONTH))
+            val day7SST = weatherCache[day7Key]?.waterTemp ?: currentSst
+            val day7Climatology = climatologicalMean(day7Cal.time)
+            val anomalyAtDay7 = day7SST - day7Climatology
+
+            val daysAhead = (diffDays - 7).toDouble()
+            val tau = decorrelationTime(date)
+            val decayFactor = exp(-daysAhead / tau)
+            val projectedSst = seasonalWaterTemp + anomalyAtDay7 * decayFactor
+
+            val anomalyPercent = (decayFactor * 100.0).roundToInt()
+            val message = if (anomalyPercent > 10) {
+                String.format(Locale.ITALY, "* Anomalia termica persistente al %d%% (temperatura prevista: %.1f°C).", anomalyPercent, projectedSst)
+            } else {
+                "* Temperatura allineata alla media climatologica storica (data lontana)."
+            }
+            Pair(projectedSst, message)
+        }
+        else -> {
+            // Within forecast window but cache missing (e.g. offline/loading)
+            Pair(seasonalWaterTemp, null)
+        }
+    }
+}
+
 fun activityForDate(
     date: Date,
     location: Location,
@@ -81,31 +136,12 @@ fun activityForDate(
         sst = cachedWeather.waterTemp
         windSpeed = cachedWeather.windSpeedMps
     } else {
-        val today = Date()
-        val todayCal = Calendar.getInstance().apply { time = today }
-        val diffDays = ((date.time - today.time) / 86400000).toInt()
-        val seasonalWaterTemp = climatologicalMean(date)
-
-        if (diffDays < -1) {
-            sst = seasonalWaterTemp
-        } else {
-            val todayKey = String.format("%04d-%02d-%02d", todayCal.get(Calendar.YEAR), todayCal.get(Calendar.MONTH) + 1, todayCal.get(Calendar.DAY_OF_MONTH))
-            val currentSst = weatherCache[todayKey]?.waterTemp ?: 20.0
-
-            val day7Cal = Calendar.getInstance().apply {
-                time = today
-                add(Calendar.DAY_OF_MONTH, 7)
-            }
-            val day7Key = String.format("%04d-%02d-%02d", day7Cal.get(Calendar.YEAR), day7Cal.get(Calendar.MONTH) + 1, day7Cal.get(Calendar.DAY_OF_MONTH))
-            val day7SST = weatherCache[day7Key]?.waterTemp ?: currentSst
-            val day7Climatology = climatologicalMean(day7Cal.time)
-            val anomalyAtDay7 = day7SST - day7Climatology
-
-            val daysAhead = (diffDays - 7).toDouble()
-            val tau = decorrelationTime(date)
-            val decayFactor = exp(-daysAhead / tau)
-            sst = seasonalWaterTemp + anomalyAtDay7 * decayFactor
-        }
+        cloud = 20.0
+        wind = 0.0
+        swell = 0.2
+        delta = 0.0
+        windSpeed = 4.0
+        sst = waterTempForDate(date, weatherCache).first
     }
 
     val weatherFactor = WeatherFactor(
