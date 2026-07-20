@@ -957,7 +957,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                            .fill(Color.teal.opacity(0.8))
                             .frame(width: 12, height: 12)
                         Text("Previsioni Reali")
                             .font(.system(size: 9))
@@ -966,7 +966,7 @@ struct ContentView: View {
                     
                     HStack(spacing: 6) {
                         RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                            .fill(Color.teal.opacity(0.38))
                             .frame(width: 12, height: 12)
                         Text("Stima Climatologica")
                             .font(.system(size: 9))
@@ -1148,7 +1148,8 @@ struct TideChartView: View {
                     let labelText = Text(labelStr)
                         .font(.system(size: 6.5, weight: .bold))
                         .foregroundColor(barColor)
-                    let centerPoint = CGPoint(x: (drawStartX + drawEndX) / 2, y: barY - 1)
+                    let textX = max(20.0, min(width - 20.0, CGFloat((drawStartX + drawEndX) / 2)))
+                    let centerPoint = CGPoint(x: textX, y: barY - 1)
                     context.draw(labelText, at: centerPoint, anchor: .bottom)
                 }
 
