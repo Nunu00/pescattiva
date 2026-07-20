@@ -843,7 +843,7 @@ fun DailyActivitySummaryCard(forecast: DailyForecast) {
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 AstroItem(label = "🌓 Fase Lunare", value = forecast.moonPhase)
-                AstroItem(label = "🎚️ Coeff. Marea", value = "${forecast.tideCoeffFactor.toInt()}") // Display formatted actual coeff
+                AstroItem(label = "🎚️ Coeff. Marea", value = "${forecast.tideCoefficient.toInt()}") // Display formatted actual coeff
             }
         }
     }
@@ -886,13 +886,19 @@ fun BestWindowsCard(forecast: DailyForecast) {
                     textAlign = TextAlign.Center
                 )
             } else {
+                val rankedWindows = forecast.bestWindows.sortedByDescending { it.efficacyPercent }
+                val titlesMap = rankedWindows.mapIndexed { rank, window ->
+                    val title = when (rank) {
+                        0 -> "🏆 Miglior Momento"
+                        1 -> "🥈 Secondo Momento Utile"
+                        else -> "🥉 Finestra Alternativa"
+                    }
+                    window.id to title
+                }.toMap()
+
                 VStack(spacing = 10) {
-                    forecast.bestWindows.forEachIndexed { index, window ->
-                        val title = when (index) {
-                            0 -> "🏆 Miglior Momento"
-                            1 -> "🥈 Secondo Momento Utile"
-                            else -> "🥉 Finestra Alternativa"
-                        }
+                    forecast.bestWindows.forEach { window ->
+                        val title = titlesMap[window.id] ?: "Finestra di Attività"
                         WindowItem(title = title, window = window)
                     }
                 }
@@ -1155,27 +1161,18 @@ fun TideCanvas(forecast: DailyForecast, selectedDate: Date) {
                 ey + if (event.type == TideType.ALTA) -8f else 18f,
                 paintText
             )
+        }
 
-            // Check if this peak matches a best window peak
-            val isTopPeak = event.type == TideType.ALTA && forecast.bestWindows.any { window ->
-                abs(window.peak.time - event.time.time) <= 7200000 // within 2 hours
-            }
+        // Draw Star and TOP badge at the peak of the absolute best window of the day
+        val best = forecast.bestWindows.maxByOrNull { it.efficacyPercent }
+        if (best != null) {
+            val offsetRatio = (best.peak.time - startOfDay.time) / 86400000f
+            val ex = offsetRatio * width
+            val hVal = TideEngine.calculateHeight(best.peak, forecast.location.coordinate)
+            val ey = centerY - (hVal / maxAmpVal).toFloat() * amplitudeFactor
 
-            if (isTopPeak) {
-                // Draw a small gold star and a tiny bold "TOP" badge
-                drawContext.canvas.nativeCanvas.drawText(
-                    "★",
-                    ex,
-                    ey - 22f,
-                    paintTextGold
-                )
-                drawContext.canvas.nativeCanvas.drawText(
-                    "TOP",
-                    ex,
-                    ey - 34f,
-                    paintTextGold
-                )
-            }
+            drawContext.canvas.nativeCanvas.drawText("★", ex, ey - 10f, paintTextGold)
+            drawContext.canvas.nativeCanvas.drawText("TOP", ex, ey - 20f, paintTextGold)
         }
     }
 }
@@ -1264,7 +1261,7 @@ fun CoastalParametersCard(
                     icon = "🌡️",
                     label = "Variazione Temp. Superficiale (24h)",
                     value = String.format(Locale.ITALY, "%+.1f°C", surfaceTempDelta24h),
-                    color = if (surfaceTempDelta24h < -1.5) ActivityEccezionale else Color.White
+                    color = if (surfaceTempDelta24h < -1.5) ActivityBassa else Color.White
                 )
             }
 

@@ -250,6 +250,7 @@ object RulesEngine {
             moonIllumination = moonIllumination,
             tides = tides,
             maxTideAmplitude = maxAmplitude,
+            tideCoefficient = coeff,
             solunarPeriods = periods,
             dailyActivity = dailyLevel,
             hourlyIntervals = intervals,

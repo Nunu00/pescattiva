@@ -158,6 +158,7 @@ data class DailyForecast(
     // Tides
     val tides: List<TideEvent>,
     val maxTideAmplitude: Double,
+    val tideCoefficient: Double,
     
     // Solunar
     val solunarPeriods: List<SolunarPeriod>,
