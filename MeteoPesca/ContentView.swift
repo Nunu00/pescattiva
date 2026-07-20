@@ -468,61 +468,7 @@ struct ContentView: View {
                             .cornerRadius(16)
                             .padding(.horizontal)
                             
-                            // 5. Solunar Periods Section
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Periodi Solunari del Giorno")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                ForEach(forecast.solunarPeriods) { period in
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            HStack {
-                                                Text(period.type.rawValue)
-                                                    .font(.caption)
-                                                    .fontWeight(.bold)
-                                                    .padding(.horizontal, 8)
-                                                    .padding(.vertical, 4)
-                                                    .background(period.type == .maggior ? Color.amberBadge : Color.cyanBadge)
-                                                    .foregroundColor(.black)
-                                                    .cornerRadius(4)
-                                                
-                                                if period.isEnhanced {
-                                                    Text("PICCO POTENZIATO 🔥")
-                                                        .font(.caption)
-                                                        .fontWeight(.bold)
-                                                        .padding(.horizontal, 8)
-                                                        .padding(.vertical, 4)
-                                                        .background(Color.red)
-                                                        .foregroundColor(.white)
-                                                        .cornerRadius(4)
-                                                }
-                                            }
-                                            
-                                            Text(period.description)
-                                                .font(.subheadline)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.white)
-                                            
-                                            Text("Orario: \(hourFormatter.string(from: period.startTime)) - \(hourFormatter.string(from: period.endTime))")
-                                                .font(.caption)
-                                                .foregroundColor(.white.opacity(0.7))
-                                        }
-                                        Spacer()
-                                        
-                                        Image(systemName: period.type == .maggior ? "bolt.fill" : "bolt")
-                                            .foregroundColor(period.isEnhanced ? .red : (period.type == .maggior ? .orange : .cyan))
-                                            .font(.title2)
-                                    }
-                                    .padding()
-                                    .background(Color.white.opacity(0.05))
-                                    .cornerRadius(12)
-                                }
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.04))
-                            .cornerRadius(16)
-                            .padding(.horizontal)
+
                             
                             // 6. Environmental Conditions Card (Meteo & Parametri Costieri)
                             VStack(alignment: .leading, spacing: 14) {
@@ -1177,6 +1123,35 @@ struct TideChartView: View {
                 let calendar = Calendar.current
                 let startOfDay = calendar.startOfDay(for: forecast.date)
                 
+                // Draw solunar periods as warm bars at the bottom
+                for period in forecast.solunarPeriods {
+                    let startOffset = period.startTime.timeIntervalSince(startOfDay)
+                    let endOffset = period.endTime.timeIntervalSince(startOfDay)
+                    
+                    let startHours = startOffset / 3600.0
+                    let endHours = endOffset / 3600.0
+                    
+                    let clampedStart = max(0.0, min(24.0, startHours))
+                    let clampedEnd = max(0.0, min(24.0, endHours))
+                    
+                    let drawStartX = (clampedStart / 24.0) * Double(width)
+                    let drawEndX = (clampedEnd / 24.0) * Double(width)
+                    
+                    let barColor = period.type == .maggior ? Color(red: 251/255, green: 146/255, blue: 60/255) : Color(red: 34/255, green: 211/255, blue: 238/255)
+                    let barY = height - 12
+                    let barRect = CGRect(x: drawStartX, y: barY, width: max(4.0, drawEndX - drawStartX), height: 4)
+                    let barPath = Path(roundedRect: barRect, cornerRadius: 2)
+                    context.fill(barPath, with: .color(barColor.opacity(0.8)))
+                    
+                    // Draw a small flame or moon emoji/icon text above the bar
+                    let labelStr = period.type == .maggior ? (period.isEnhanced ? "🔥 MAG" : "🌕 MAG") : "🌑 MIN"
+                    let labelText = Text(labelStr)
+                        .font(.system(size: 6.5, weight: .bold))
+                        .foregroundColor(barColor)
+                    let centerPoint = CGPoint(x: (drawStartX + drawEndX) / 2, y: barY - 1)
+                    context.draw(labelText, at: centerPoint, anchor: .bottom)
+                }
+
                 // Draw soft vertical bands for best windows
                 for window in forecast.bestWindows {
                     let startOffset = window.start.timeIntervalSince(startOfDay)
@@ -1300,19 +1275,32 @@ struct TideChartView: View {
             .padding(.horizontal, 4)
             
             // Legend
-            HStack(spacing: 12) {
-                HStack(spacing: 4) {
-                    Circle().fill(Color.green).frame(width: 8, height: 8)
-                    Text("Alta Marea").font(.caption2).foregroundColor(.white.opacity(0.7))
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.green).frame(width: 8, height: 8)
+                        Text("Alta Marea").font(.caption2).foregroundColor(.white.opacity(0.7))
+                    }
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.cyan).frame(width: 8, height: 8)
+                        Text("Bassa Marea").font(.caption2).foregroundColor(.white.opacity(0.7))
+                    }
+                    Spacer()
+                    Text("Escursione max: \(String(format: "%.2f", forecast.maxTideAmplitude))m")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.6))
                 }
-                HStack(spacing: 4) {
-                    Circle().fill(Color.cyan).frame(width: 8, height: 8)
-                    Text("Bassa Marea").font(.caption2).foregroundColor(.white.opacity(0.7))
+                
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 1).fill(Color(red: 251/255, green: 146/255, blue: 60/255)).frame(width: 10, height: 3)
+                        Text("Periodo Maggiore").font(.caption2).foregroundColor(.white.opacity(0.7))
+                    }
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 1).fill(Color(red: 34/255, green: 211/255, blue: 238/255)).frame(width: 10, height: 3)
+                        Text("Periodo Minore").font(.caption2).foregroundColor(.white.opacity(0.7))
+                    }
                 }
-                Spacer()
-                Text("Escursione max: \(String(format: "%.2f", forecast.maxTideAmplitude))m")
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.6))
             }
             .padding(.top, 4)
         }
