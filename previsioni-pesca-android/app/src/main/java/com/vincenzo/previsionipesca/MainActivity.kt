@@ -217,14 +217,14 @@ fun SplashScreen() {
             ) {
                 Text(
                     text = "Previsioni Pesca",
-                    color = Color.white,
+                    color = Color.White,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
                 Text(
                     text = "Il tuo compagno di pesca scientifico",
-                    color = Color.white.copy(alpha = 0.6f),
+                    color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -358,7 +358,7 @@ fun MainScreen() {
                     VStack(horizontalAlignment = Alignment.CenterHorizontally, spacing = 2) {
                         Text(
                             text = "Previsioni Pesca",
-                            color = Color.white,
+                            color = Color.White,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -461,7 +461,7 @@ fun LocationPickerCard(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = DarkNavy),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.white.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Row(
             modifier = Modifier
@@ -476,7 +476,7 @@ fun LocationPickerCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Località",
-                    color = Color.white.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.8f),
                     fontSize = 14.sp
                 )
             }
@@ -501,7 +501,7 @@ fun LocationPickerCard(
                         text = {
                             Text(
                                 text = loc.name,
-                                color = if (loc.name == selectedLocation.name) TealAccent else Color.white
+                                color = if (loc.name == selectedLocation.name) TealAccent else Color.White
                             )
                         },
                         onClick = {
@@ -569,7 +569,7 @@ fun CalendarCard(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = DarkNavy),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.white.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Month Header
@@ -590,7 +590,7 @@ fun CalendarCard(
 
                 Text(
                     text = SimpleDateFormat("MMMM yyyy", Locale.ITALIAN).format(currentMonthDate).replaceFirstChar { it.uppercase() },
-                    color = Color.white,
+                    color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -613,7 +613,7 @@ fun CalendarCard(
                 listOf("Lu", "Ma", "Me", "Gi", "Ve", "Sa", "Do").forEach { day ->
                     Text(
                         text = day,
-                        color = Color.white.copy(alpha = 0.4f),
+                        color = Color.White.copy(alpha = 0.4f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
@@ -733,7 +733,7 @@ fun CalendarCell(
             .background(cellColor)
             .border(
                 width = if (isSelected) 2.dp else if (isToday) 1.dp else 0.dp,
-                color = if (isSelected) TealAccent else if (isToday) Color.white else Color.Transparent,
+                color = if (isSelected) TealAccent else if (isToday) Color.White else Color.Transparent,
                 shape = RoundedCornerShape(8.dp)
             )
             .clickable { onDateSelected(date) },
@@ -741,7 +741,7 @@ fun CalendarCell(
     ) {
         Text(
             text = day.toString(),
-            color = if (activity == ActivityLevel.BUONA) Color.black else Color.white,
+            color = if (activity == ActivityLevel.BUONA) Color.Black else Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
@@ -771,7 +771,7 @@ fun CalendarLegend() {
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = pair.first,
-                    color = Color.white.copy(alpha = 0.6f),
+                    color = Color.White.copy(alpha = 0.6f),
                     fontSize = 10.sp
                 )
             }
@@ -787,7 +787,7 @@ fun DailyActivitySummaryCard(forecast: DailyForecast) {
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkNavy),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.white.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(
             modifier = Modifier
@@ -797,7 +797,7 @@ fun DailyActivitySummaryCard(forecast: DailyForecast) {
         ) {
             Text(
                 text = "Attività del Giorno",
-                color = Color.white.copy(alpha = 0.6f),
+                color = Color.White.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth()
@@ -853,8 +853,8 @@ fun DailyActivitySummaryCard(forecast: DailyForecast) {
 @Composable
 fun AstroItem(label: String, value: String) {
     VStack(horizontalAlignment = Alignment.CenterHorizontally, spacing = 2) {
-        Text(text = label, color = Color.white.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text(text = value, color = Color.white, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(text = label, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(text = value, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -866,12 +866,12 @@ fun BestWindowsCard(forecast: DailyForecast) {
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkNavy),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.white.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Finestre Migliori di Oggi",
-                color = Color.white.copy(alpha = 0.6f),
+                color = Color.White.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -881,7 +881,7 @@ fun BestWindowsCard(forecast: DailyForecast) {
             if (forecast.bestWindows.isEmpty()) {
                 Text(
                     text = "Nessuna finestra ottimale rilevata per oggi.",
-                    color = Color.white.copy(alpha = 0.4f),
+                    color = Color.White.copy(alpha = 0.4f),
                     fontSize = 13.sp,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
@@ -916,8 +916,8 @@ fun WindowItem(title: String, window: ActivityWindow) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.white.copy(alpha = 0.03f))
-            .border(1.dp, Color.white.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.03f))
+            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
             .padding(12.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -926,7 +926,7 @@ fun WindowItem(title: String, window: ActivityWindow) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = title, color = Color.white, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(text = title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -962,11 +962,11 @@ fun WindowItem(title: String, window: ActivityWindow) {
             // Drivers
             window.reasons.take(3).forEach { reason ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "•", color = Color.white.copy(alpha = 0.4f), fontSize = 12.sp)
+                    Text(text = "•", color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = reason,
-                        color = Color.white.copy(alpha = 0.7f),
+                        color = Color.White.copy(alpha = 0.7f),
                         fontSize = 11.sp
                     )
                 }
@@ -983,12 +983,12 @@ fun TideChartCard(forecast: DailyForecast, selectedDate: Date) {
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkNavy),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.white.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Andamento Maree",
-                color = Color.white.copy(alpha = 0.6f),
+                color = Color.White.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -1023,13 +1023,13 @@ fun TideChartCard(forecast: DailyForecast, selectedDate: Date) {
                         )
                         Text(
                             text = SimpleDateFormat("HH:mm", Locale.ITALIAN).format(event.time),
-                            color = Color.white,
+                            color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = String.format(Locale.ITALY, "%+.2f m", event.height),
-                            color = Color.white.copy(alpha = 0.6f),
+                            color = Color.White.copy(alpha = 0.6f),
                             fontSize = 10.sp
                         )
                     }
@@ -1057,7 +1057,7 @@ fun TideCanvas(forecast: DailyForecast, selectedDate: Date) {
 
         // Draw mean sea level line
         drawLine(
-            color = Color.white.copy(alpha = 0.08f),
+            color = Color.White.copy(alpha = 0.08f),
             start = Offset(0f, centerY),
             end = Offset(width, centerY),
             strokeWidth = 1f
@@ -1067,7 +1067,7 @@ fun TideCanvas(forecast: DailyForecast, selectedDate: Date) {
         for (h in listOf(6, 12, 18)) {
             val gridX = (h / 24f) * width
             drawLine(
-                color = Color.white.copy(alpha = 0.1f),
+                color = Color.White.copy(alpha = 0.1f),
                 start = Offset(gridX, 0f),
                 end = Offset(gridX, height),
                 strokeWidth = 1f,
@@ -1198,7 +1198,7 @@ fun CoastalParametersCard(
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkNavy),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.white.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -1208,7 +1208,7 @@ fun CoastalParametersCard(
             ) {
                 Text(
                     text = "Meteo & Parametri Costieri",
-                    color = Color.white.copy(alpha = 0.6f),
+                    color = Color.White.copy(alpha = 0.6f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1237,35 +1237,35 @@ fun CoastalParametersCard(
                     icon = "☁️",
                     label = "Nuvolosità",
                     value = "${cloudCover.toInt()}%",
-                    color = Color.cyan
+                    color = Color.Cyan
                 )
-                Divider(color = Color.white.copy(alpha = 0.05f))
+                Divider(color = Color.White.copy(alpha = 0.05f))
                 ParameterItem(
                     icon = "💨",
                     label = "Variazione Direzione Vento",
                     value = "${windDirectionChange.toInt()}°",
                     color = Color(0xFFFFB74D)
                 )
-                Divider(color = Color.white.copy(alpha = 0.05f))
+                Divider(color = Color.White.copy(alpha = 0.05f))
                 ParameterItem(
                     icon = "🌀",
                     label = "Velocità Vento Sostenuto",
                     value = String.format(Locale.ITALY, "%.1f m/s", windSpeedMps),
                     color = Color(0xFFFFF176)
                 )
-                Divider(color = Color.white.copy(alpha = 0.05f))
+                Divider(color = Color.White.copy(alpha = 0.05f))
                 ParameterItem(
                     icon = "🌊",
                     label = "Altezza Onda (Swell)",
                     value = String.format(Locale.ITALY, "%.1f m", swellHeight),
                     color = Color(0xFF64B5F6)
                 )
-                Divider(color = Color.white.copy(alpha = 0.05f))
+                Divider(color = Color.White.copy(alpha = 0.05f))
                 ParameterItem(
                     icon = "🌡️",
                     label = "Variazione Temp. Superficiale (24h)",
                     value = String.format(Locale.ITALY, "%+.1f°C", surfaceTempDelta24h),
-                    color = if (surfaceTempDelta24h < -1.5) ActivityEccezionale else Color.white
+                    color = if (surfaceTempDelta24h < -1.5) ActivityEccezionale else Color.White
                 )
             }
 
@@ -1284,7 +1284,7 @@ fun CoastalParametersCard(
             Text(
                 text = "* Rilevamenti costieri e satellitari aggiornati via Open-Meteo.",
                 fontSize = 9.sp,
-                color = Color.white.copy(alpha = 0.3f),
+                color = Color.White.copy(alpha = 0.3f),
                 fontWeight = FontWeight.Medium
             )
         }
@@ -1308,7 +1308,7 @@ fun ParameterItem(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = label,
-                color = Color.white.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = 0.8f),
                 fontSize = 13.sp
             )
         }

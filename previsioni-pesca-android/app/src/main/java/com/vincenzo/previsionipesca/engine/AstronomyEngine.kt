@@ -34,22 +34,17 @@ object AstronomyEngine {
         val sunrise = sunTimes.rise?.let { Date.from(it.toInstant()) }
         val sunset = sunTimes.set?.let { Date.from(it.toInstant()) }
 
-        // Moon rise, set, and meridian transit
+        // Moon rise and set
         val moonTimes = MoonTimes.compute()
             .on(zdt)
             .at(coordinate.latitude, coordinate.longitude)
             .execute()
         val moonrise = moonTimes.rise?.let { Date.from(it.toInstant()) }
         val moonset = moonTimes.set?.let { Date.from(it.toInstant()) }
-        val moonTransit = moonTimes.transit?.let { Date.from(it.toInstant()) }
 
-        // Anti-transit (Nadir transit): calculated as the transit at the antipodal longitude (+180 degrees)
-        val antipodalLongitude = ((coordinate.longitude + 180.0) + 180.0) % 360.0 - 180.0
-        val antipodalMoonTimes = MoonTimes.compute()
-            .on(zdt)
-            .at(coordinate.latitude, antipodalLongitude)
-            .execute()
-        val moonAntiTransit = antipodalMoonTimes.transit?.let { Date.from(it.toInstant()) }
+        // Exact Moon Transit and Anti-Transit (Nadir) using altitude search
+        val moonTransit = findMoonTransit(zdt, coordinate.latitude, coordinate.longitude)
+        val moonAntiTransit = findMoonAntiTransit(zdt, coordinate.latitude, coordinate.longitude)
 
         // Moon Age: shredzone MoonIllumination getPhase() range [-180, 180] (where -180 is new moon, 0 is full moon)
         val illumination = MoonIllumination.compute()
@@ -75,5 +70,85 @@ object AstronomyEngine {
             moonAge = moonAge,
             moonDistance = moonDistance
         )
+    }
+
+    private fun findMoonTransit(zdt: ZonedDateTime, latitude: Double, longitude: Double): Date {
+        val baseTimeMs = zdt.toLocalDate().atStartOfDay(zdt.zone).toInstant().toEpochMilli()
+        var maxAlt = -Double.MAX_VALUE
+        var transitTimeMs = baseTimeMs
+
+        // Coarse search every 30 minutes
+        for (i in 0..48) {
+            val t = baseTimeMs + i * 30 * 60 * 1000L
+            val testZdt = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(t), zdt.zone)
+            val alt = MoonPosition.compute()
+                .on(testZdt)
+                .at(latitude, longitude)
+                .execute()
+                .altitude
+            if (alt > maxAlt) {
+                maxAlt = alt
+                transitTimeMs = t
+            }
+        }
+
+        // Fine search around the candidate ±15 minutes (in 1-minute steps)
+        var fineTransitTimeMs = transitTimeMs
+        maxAlt = -Double.MAX_VALUE
+        for (m in -15..15) {
+            val t = transitTimeMs + m * 60 * 1000L
+            val testZdt = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(t), zdt.zone)
+            val alt = MoonPosition.compute()
+                .on(testZdt)
+                .at(latitude, longitude)
+                .execute()
+                .altitude
+            if (alt > maxAlt) {
+                maxAlt = alt
+                fineTransitTimeMs = t
+            }
+        }
+
+        return Date(fineTransitTimeMs)
+    }
+
+    private fun findMoonAntiTransit(zdt: ZonedDateTime, latitude: Double, longitude: Double): Date {
+        val baseTimeMs = zdt.toLocalDate().atStartOfDay(zdt.zone).toInstant().toEpochMilli()
+        var minAlt = Double.MAX_VALUE
+        var antiTransitTimeMs = baseTimeMs
+
+        // Coarse search every 30 minutes
+        for (i in 0..48) {
+            val t = baseTimeMs + i * 30 * 60 * 1000L
+            val testZdt = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(t), zdt.zone)
+            val alt = MoonPosition.compute()
+                .on(testZdt)
+                .at(latitude, longitude)
+                .execute()
+                .altitude
+            if (alt < minAlt) {
+                minAlt = alt
+                antiTransitTimeMs = t
+            }
+        }
+
+        // Fine search around the candidate ±15 minutes (in 1-minute steps)
+        var fineAntiTransitTimeMs = antiTransitTimeMs
+        minAlt = Double.MAX_VALUE
+        for (m in -15..15) {
+            val t = antiTransitTimeMs + m * 60 * 1000L
+            val testZdt = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(t), zdt.zone)
+            val alt = MoonPosition.compute()
+                .on(testZdt)
+                .at(latitude, longitude)
+                .execute()
+                .altitude
+            if (alt < minAlt) {
+                minAlt = alt
+                fineAntiTransitTimeMs = t
+            }
+        }
+
+        return Date(fineAntiTransitTimeMs)
     }
 }

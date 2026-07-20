@@ -67,8 +67,8 @@ object TideEngine {
         var nearest = stations[0]
         var minDistance = Double.MAX_VALUE
         for (station in stations) {
-            val latDiff = station.latitude - coordinate.latitude
-            val lonDiff = station.longitude - coordinate.longitude
+            val latDiff = station.coordinate.latitude - coordinate.latitude
+            val lonDiff = station.coordinate.longitude - coordinate.longitude
             val dist = sqrt(latDiff * latDiff + lonDiff * lonDiff)
             if (dist < minDistance) {
                 minDistance = dist
@@ -155,10 +155,10 @@ object TideEngine {
 
             if (curr > prev && curr > next) {
                 // High Tide
-                events.add(TideEvent(samples[i].first, curr, TideType.HIGH))
+                events.add(TideEvent(time = samples[i].first, height = curr, type = TideType.ALTA))
             } else if (curr < prev && curr < next) {
                 // Low Tide
-                events.add(TideEvent(samples[i].first, curr, TideType.LOW))
+                events.add(TideEvent(time = samples[i].first, height = curr, type = TideType.BASSA))
             }
         }
 
