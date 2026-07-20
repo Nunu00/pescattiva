@@ -37,11 +37,11 @@ jobs:
           mkdir -p build/Payload
           cp -r build/MeteoPesca.xcarchive/Products/Applications/MeteoPesca.app build/Payload/
           cd build
-          zip -r PescAttiva.ipa Payload
+          zip -r PrevisioniPesca.ipa Payload
           cd ..
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PescAttiva-Unsigned-IPA
-          path: build/PescAttiva.ipa
+          name: Previsioni-Pesca-Unsigned-IPA
+          path: build/PrevisioniPesca.ipa

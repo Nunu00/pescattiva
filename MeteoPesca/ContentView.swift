@@ -675,7 +675,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationTitle("PescAttiva Forecast")
+            .navigationTitle("Previsioni Pesca")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -1096,7 +1096,7 @@ struct ContentView: View {
                 }
                 
                 VStack(spacing: 8) {
-                    Text("PescAttiva")
+                    Text("Previsioni Pesca")
                         .font(.system(size: 36, weight: .black, design: .rounded))
                         .foregroundColor(.white)
                         .tracking(1.5)
