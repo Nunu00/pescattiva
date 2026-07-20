@@ -8,7 +8,10 @@ public class TideEngine {
         Location(name: "Sibari", latitude: 39.73, longitude: 16.48, tideLagDays: 1.5),
         Location(name: "Trebisacce", latitude: 39.87, longitude: 16.53, tideLagDays: 1.5),
         Location(name: "Corigliano", latitude: 39.60, longitude: 16.52, tideLagDays: 1.5),
-        Location(name: "Rossano", latitude: 39.57, longitude: 16.63, tideLagDays: 1.5)
+        Location(name: "Rossano", latitude: 39.57, longitude: 16.63, tideLagDays: 1.5),
+        Location(name: "Cetraro (Tirreno)", latitude: 39.52, longitude: 15.94, tideLagDays: 1.3),
+        Location(name: "Diamante (Tirreno)", latitude: 39.68, longitude: 15.81, tideLagDays: 1.3),
+        Location(name: "Praia a Mare (Tirreno)", latitude: 39.90, longitude: 15.78, tideLagDays: 1.3)
     ]
     
     // Constituent speed in degrees per hour
@@ -50,6 +53,27 @@ public class TideEngine {
             "N2": (0.02, 270.0),
             "K1": (0.04, 60.0),
             "O1": (0.03, 40.0)
+        ],
+        "Cetraro (Tirreno)": [
+            "M2": (0.11, 280.0),
+            "S2": (0.04, 295.0),
+            "N2": (0.02, 260.0),
+            "K1": (0.05, 50.0),
+            "O1": (0.03, 35.0)
+        ],
+        "Diamante (Tirreno)": [
+            "M2": (0.11, 280.0),
+            "S2": (0.04, 295.0),
+            "N2": (0.02, 260.0),
+            "K1": (0.05, 50.0),
+            "O1": (0.03, 35.0)
+        ],
+        "Praia a Mare (Tirreno)": [
+            "M2": (0.11, 280.0),
+            "S2": (0.04, 295.0),
+            "N2": (0.02, 260.0),
+            "K1": (0.05, 50.0),
+            "O1": (0.03, 35.0)
         ]
     ]
     

@@ -3,9 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedDate: Date = Date()
     @State private var selectedLocation: Location = TideEngine.stations[0]
-    @State private var customLatitude: String = "39.73"
-    @State private var customLongitude: String = "16.48"
-    @State private var isShowingCustomCoordinates: Bool = false
     @State private var savedLocations: [Location] = TideEngine.stations
     @State private var forecast: DailyForecast?
     
@@ -195,9 +192,7 @@ struct ContentView: View {
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                .onChange(of: selectedLocation) { newLoc in
-                                    customLatitude = String(format: "%.4f", newLoc.coordinate.latitude)
-                                    customLongitude = String(format: "%.4f", newLoc.coordinate.longitude)
+                                .onChange(of: selectedLocation) { _ in
                                     self.weatherCache = [:]
                                     calculateForecast()
                                     updateWeatherAutomatically()
@@ -207,49 +202,6 @@ struct ContentView: View {
                             .padding(.vertical, 8)
                             .background(Color.white.opacity(0.06))
                             .cornerRadius(12)
-                            
-                            Toggle(isOn: $isShowingCustomCoordinates) {
-                                Text("Coordinate Personalizzate")
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 4)
-                            
-                            if isShowingCustomCoordinates {
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Latitudine").font(.caption).foregroundColor(.white.opacity(0.6))
-                                        TextField("es. 39.73", text: $customLatitude)
-                                            .keyboardType(.decimalPad)
-                                            .padding(10)
-                                            .background(Color.white.opacity(0.1))
-                                            .cornerRadius(8)
-                                            .foregroundColor(.white)
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Longitudine").font(.caption).foregroundColor(.white.opacity(0.6))
-                                        TextField("es. 16.48", text: $customLongitude)
-                                            .keyboardType(.decimalPad)
-                                            .padding(10)
-                                            .background(Color.white.opacity(0.1))
-                                            .cornerRadius(8)
-                                            .foregroundColor(.white)
-                                    }
-                                    
-                                    Button(action: applyCustomCoordinates) {
-                                        Text("Applica")
-                                            .fontWeight(.bold)
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 12)
-                                            .background(Color.teal)
-                                            .foregroundColor(.black)
-                                            .cornerRadius(8)
-                                    }
-                                    .padding(.top, 20)
-                                }
-                                .padding(.horizontal)
-                            }
                         }
                         .padding()
                         .background(Color.white.opacity(0.04))
@@ -765,16 +717,7 @@ struct ContentView: View {
         }
     }
     
-    private func applyCustomCoordinates() {
-        if let lat = Double(customLatitude), let lon = Double(customLongitude) {
-            let customLoc = Location(name: "Coordinate Manuali", latitude: lat, longitude: lon)
-            selectedLocation = customLoc
-            self.weatherCache = [:]
-            calculateForecast()
-            updateWeatherAutomatically()
-        }
-    }
-    
+
     private func calculateForecast() {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: selectedDate)
